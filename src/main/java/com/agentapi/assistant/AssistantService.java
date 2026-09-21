@@ -1,6 +1,8 @@
 package com.agentapi.assistant;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -25,5 +27,9 @@ public class AssistantService {
 
     public Optional<Assistant> find(AssistantType type) {
         return Optional.ofNullable(assistants.get(type));
+    }
+
+    public List<Assistant> listAll() {
+        return new ArrayList<>(assistants.values());
     }
 }

@@ -1,24 +1,22 @@
 package com.agentapi.config;
 
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import java.util.List;
+
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-@EnableConfigurationProperties(CorsProperties.class)
 public class WebConfig implements WebMvcConfigurer {
 
-    private final CorsProperties corsProperties;
-
-    public WebConfig(CorsProperties corsProperties) {
-        this.corsProperties = corsProperties;
-    }
+    private static final List<String> ALLOWED_ORIGINS = List.of(
+            "http://localhost:5173",
+            "http://127.0.0.1:5173");
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOrigins(corsProperties.getAllowedOrigins().toArray(String[]::new))
+                .allowedOrigins(ALLOWED_ORIGINS.toArray(String[]::new))
                 .allowedMethods("GET", "POST", "OPTIONS")
                 .allowedHeaders("*")
                 .maxAge(3600);

@@ -37,16 +37,16 @@ src/main/java/com/agentapi/
 `src/main/resources/application.properties`:
 
 ```properties
-server.port=8081
+server.port=${SERVER_PORT:8080}
 
 llm.provider=ollama
 
 ollama.base-url=${OLLAMA_BASE_URL:http://localhost:11434}
 ollama.model=${OLLAMA_MODEL:qwen3:8b}
 ollama.timeout=${OLLAMA_TIMEOUT:60s}
-
-app.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
 ```
+
+CORS para o front em dev (`http://localhost:5173`) está em `config/WebConfig.java` (não usa `.env`).
 
 Variáveis podem ser definidas no `.env` na raiz do projeto (carregado antes do Spring Boot):
 
@@ -69,12 +69,18 @@ ollama pull qwen3:8b
 mvn spring-boot:run
 ```
 
-A API sobe em `http://localhost:8081`.
+A API sobe em `http://localhost:8080`.
 
-Health check (usado pelo front):
+Health check (leve, load balancer):
 
 ```bash
-curl -s http://localhost:8081/api/agent/health
+curl -s http://localhost:8080/api/agent/health
+```
+
+Diagnóstico completo (API + Ollama + modelo + assistente):
+
+```bash
+curl -s "http://localhost:8080/api/agent/status?assistant=HORAS_EXTRAS"
 ```
 
 ## Integração com o front (Vite)
@@ -95,7 +101,7 @@ O playground em `http://localhost:5173` chama a API com CORS habilitado para ess
 ## Testar (cURL / Postman)
 
 ```bash
-curl -s -X POST http://localhost:8081/api/agent/chat \
+curl -s -X POST http://localhost:8080/api/agent/chat \
   -H "Content-Type: application/json" \
   -d '{"assistant":"HORAS_EXTRAS","message":"Olá, quem é você?"}'
 ```
@@ -111,7 +117,7 @@ Resposta esperada (exemplo):
 Assistente inválido:
 
 ```bash
-curl -s -X POST http://localhost:8081/api/agent/chat \
+curl -s -X POST http://localhost:8080/api/agent/chat \
   -H "Content-Type: application/json" \
   -d '{"assistant":"INEXISTENTE","message":"Olá"}'
 ```

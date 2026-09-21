@@ -15,12 +15,26 @@ import com.agentapi.llm.OllamaClient;
 @Configuration
 public class OllamaConfig {
 
+    private static final Duration PROBE_TIMEOUT = Duration.ofSeconds(5);
+
     @Bean
     RestClient ollamaRestClient(OllamaProperties properties) {
         Duration timeout = properties.getTimeout();
         ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.DEFAULTS
                 .withConnectTimeout(timeout)
                 .withReadTimeout(timeout);
+        return RestClient.builder()
+                .baseUrl(properties.getBaseUrl())
+                .requestFactory(ClientHttpRequestFactories.get(settings))
+                .build();
+    }
+
+    /** Timeout curto para health/diagnóstico — não bloquear /api/agent/status se o Ollama estiver off. */
+    @Bean
+    RestClient ollamaProbeRestClient(OllamaProperties properties) {
+        ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.DEFAULTS
+                .withConnectTimeout(PROBE_TIMEOUT)
+                .withReadTimeout(PROBE_TIMEOUT);
         return RestClient.builder()
                 .baseUrl(properties.getBaseUrl())
                 .requestFactory(ClientHttpRequestFactories.get(settings))
