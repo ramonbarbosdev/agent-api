@@ -1,5 +1,9 @@
 package com.agentapi.web;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -11,6 +15,10 @@ public class AgentChatRequest {
     @NotBlank(message = "A mensagem é obrigatória.")
     @Size(max = 4000, message = "A mensagem deve ter no máximo 4000 caracteres.")
     private String message;
+
+    @Valid
+    @Size(max = 50, message = "O histórico deve ter no máximo 50 mensagens.")
+    private List<AgentChatHistoryMessage> history = new ArrayList<>();
 
     public String getAssistant() {
         return assistant;
@@ -26,5 +34,13 @@ public class AgentChatRequest {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public List<AgentChatHistoryMessage> getHistory() {
+        return history;
+    }
+
+    public void setHistory(List<AgentChatHistoryMessage> history) {
+        this.history = history != null ? history : new ArrayList<>();
     }
 }

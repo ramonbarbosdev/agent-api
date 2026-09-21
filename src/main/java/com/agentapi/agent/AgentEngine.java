@@ -1,5 +1,6 @@
 package com.agentapi.agent;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import com.agentapi.llm.LlmRequest;
 import com.agentapi.llm.LlmResponse;
 import com.agentapi.tool.ToolExecutor;
 import com.agentapi.tool.ToolRegistry;
+import com.agentapi.web.AgentChatHistoryMessage;
 
 @Component
 public class AgentEngine {
@@ -43,7 +45,7 @@ public class AgentEngine {
         this.toolExecutor = toolExecutor;
     }
 
-    public String run(AgentContext context, String userMessage) {
+    public String run(AgentContext context, String userMessage, List<AgentChatHistoryMessage> history) {
         log.info("Agent request received (assistant={})", context.getAssistant());
 
         Assistant assistant = assistantService.find(context.getAssistant())
@@ -52,9 +54,20 @@ public class AgentEngine {
         log.info("Assistant selected (assistant={})", assistant.type().name());
 
         String model = assistant.resolveModel(ollamaProperties.getModel());
-        LlmRequest request = new LlmRequest(model, List.of(
-                LlmMessage.system(assistant.systemPrompt()),
-                LlmMessage.user(userMessage)));
+        List<LlmMessage> messages = new ArrayList<>();
+        messages.add(LlmMessage.system(assistant.systemPrompt()));
+        if (history != null) {
+            for (AgentChatHistoryMessage item : history) {
+                if ("user".equals(item.getRole())) {
+                    messages.add(LlmMessage.user(item.getContent()));
+                } else if ("assistant".equals(item.getRole())) {
+                    messages.add(LlmMessage.assistant(item.getContent()));
+                }
+            }
+        }
+        messages.add(LlmMessage.user(userMessage));
+
+        LlmRequest request = new LlmRequest(model, messages);
 
         log.info("LLM request started (assistant={}, model={}, messageLength={})",
                 assistant.type().name(), model, userMessage.length());

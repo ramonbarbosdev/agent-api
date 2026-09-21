@@ -24,7 +24,7 @@ public class AgentService {
                 .assistant(assistantType)
                 .build();
 
-        String reply = agentEngine.run(context, request.getMessage());
+        String reply = agentEngine.run(context, request.getMessage(), request.getHistory());
         return new AgentChatResponse(reply);
     }
 }

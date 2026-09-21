@@ -44,6 +44,8 @@ llm.provider=ollama
 ollama.base-url=${OLLAMA_BASE_URL:http://localhost:11434}
 ollama.model=${OLLAMA_MODEL:qwen3:8b}
 ollama.timeout=${OLLAMA_TIMEOUT:60s}
+
+app.cors.allowed-origins=${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
 ```
 
 Variáveis podem ser definidas no `.env` na raiz do projeto (carregado antes do Spring Boot):
@@ -68,6 +70,27 @@ mvn spring-boot:run
 ```
 
 A API sobe em `http://localhost:8081`.
+
+Health check (usado pelo front):
+
+```bash
+curl -s http://localhost:8081/api/agent/health
+```
+
+## Integração com o front (Vite)
+
+O playground em `http://localhost:5173` chama a API com CORS habilitado para essa origem. O chat aceita histórico opcional:
+
+```json
+{
+  "assistant": "HORAS_EXTRAS",
+  "message": "Nova pergunta",
+  "history": [
+    { "role": "user", "content": "Olá" },
+    { "role": "assistant", "content": "Olá! Como posso ajudar?" }
+  ]
+}
+```
 
 ## Testar (cURL / Postman)
 
