@@ -34,19 +34,22 @@ src/main/java/com/agentapi/
 
 ## Configuração
 
-`src/main/resources/application.yml`:
+`src/main/resources/application.properties`:
 
-```yaml
-server:
-  port: 8081
+```properties
+server.port=8081
 
-llm:
-  provider: ollama
+llm.provider=ollama
 
-ollama:
-  base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-  model: ${OLLAMA_MODEL:qwen3:8b}
-  timeout: ${OLLAMA_TIMEOUT:60s}
+ollama.base-url=${OLLAMA_BASE_URL:http://localhost:11434}
+ollama.model=${OLLAMA_MODEL:qwen3:8b}
+ollama.timeout=${OLLAMA_TIMEOUT:60s}
+```
+
+Variáveis podem ser definidas no `.env` na raiz do projeto (carregado antes do Spring Boot):
+
+```bash
+cp .env.exemple .env
 ```
 
 ## Pré-requisitos
