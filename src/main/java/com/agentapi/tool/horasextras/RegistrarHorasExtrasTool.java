@@ -16,7 +16,8 @@ import com.agentapi.tool.ToolSchemas;
 import com.fasterxml.jackson.databind.JsonNode;
 
 /**
- * Operação de escrita — bloqueada por {@link com.agentapi.agent.AgentPolicy} até confirmação do usuário.
+ * Operação de escrita — bloqueada por {@link com.agentapi.agent.AgentPolicy}
+ * até confirmação do usuário.
  */
 @Component
 public class RegistrarHorasExtrasTool implements AgentTool {
