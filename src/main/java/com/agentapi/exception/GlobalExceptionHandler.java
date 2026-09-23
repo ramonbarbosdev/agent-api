@@ -39,7 +39,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApi(ApiException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        HttpStatus status = ex instanceof ToolException ? HttpStatus.UNPROCESSABLE_ENTITY : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status)
                 .body(ErrorResponse.from(ex.getCode(), ex.getMessage()));
     }
 

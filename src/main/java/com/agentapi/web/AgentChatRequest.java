@@ -16,6 +16,12 @@ public class AgentChatRequest {
     @Size(max = 4000, message = "A mensagem deve ter no máximo 4000 caracteres.")
     private String message;
 
+    /**
+     * Thread opcional. Se omitido, a API cria um novo UUID e devolve na resposta.
+     */
+    @Size(max = 36, message = "conversationId inválido.")
+    private String conversationId;
+
     @Valid
     @Size(max = 50, message = "O histórico deve ter no máximo 50 mensagens.")
     private List<AgentChatHistoryMessage> history = new ArrayList<>();
@@ -34,6 +40,14 @@ public class AgentChatRequest {
 
     public void setMessage(String message) {
         this.message = message;
+    }
+
+    public String getConversationId() {
+        return conversationId;
+    }
+
+    public void setConversationId(String conversationId) {
+        this.conversationId = conversationId;
     }
 
     public List<AgentChatHistoryMessage> getHistory() {

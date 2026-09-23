@@ -8,24 +8,20 @@ import com.agentapi.assistant.AssistantType;
 
 public class AgentContext {
 
-    private final UUID tenantId;
     private final UUID userId;
     private final String phoneNumber;
     private final AssistantType assistant;
+    private final UUID conversationId;
     private final Set<String> permissions;
 
     private AgentContext(Builder builder) {
-        this.tenantId = builder.tenantId;
         this.userId = builder.userId;
         this.phoneNumber = builder.phoneNumber;
         this.assistant = builder.assistant;
+        this.conversationId = builder.conversationId;
         this.permissions = builder.permissions != null
                 ? Set.copyOf(builder.permissions)
                 : Collections.emptySet();
-    }
-
-    public UUID getTenantId() {
-        return tenantId;
     }
 
     public UUID getUserId() {
@@ -40,6 +36,10 @@ public class AgentContext {
         return assistant;
     }
 
+    public UUID getConversationId() {
+        return conversationId;
+    }
+
     public Set<String> getPermissions() {
         return permissions;
     }
@@ -50,16 +50,11 @@ public class AgentContext {
 
     public static final class Builder {
 
-        private UUID tenantId;
         private UUID userId;
         private String phoneNumber;
         private AssistantType assistant;
+        private UUID conversationId;
         private Set<String> permissions;
-
-        public Builder tenantId(UUID tenantId) {
-            this.tenantId = tenantId;
-            return this;
-        }
 
         public Builder userId(UUID userId) {
             this.userId = userId;
@@ -73,6 +68,11 @@ public class AgentContext {
 
         public Builder assistant(AssistantType assistant) {
             this.assistant = assistant;
+            return this;
+        }
+
+        public Builder conversationId(UUID conversationId) {
+            this.conversationId = conversationId;
             return this;
         }
 

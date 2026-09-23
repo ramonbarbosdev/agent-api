@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.agentapi.exception.ErrorCode;
 import com.agentapi.exception.GlobalExceptionHandler;
 import com.agentapi.llm.LlmClient;
+import com.agentapi.tool.ToolService;
 import com.agentapi.web.AgentPlatformStatusResponse;
 import com.agentapi.web.AssistantStatusDto;
 import com.agentapi.web.LlmStatusDto;
@@ -40,6 +41,9 @@ class AgentControllerTest {
 
     @MockitoBean
     private AgentStatusService agentStatusService;
+
+    @MockitoBean
+    private ToolService toolService;
 
     @Test
     void healthReturnsUp() throws Exception {
@@ -67,7 +71,9 @@ class AgentControllerTest {
 
     @Test
     void chatReturnsAssistantMessage() throws Exception {
-        when(agentService.chat(any())).thenReturn(new com.agentapi.web.AgentChatResponse("Olá! Como posso ajudar?"));
+        when(agentService.chat(any())).thenReturn(new com.agentapi.web.AgentChatResponse(
+                "Olá! Como posso ajudar?",
+                "550e8400-e29b-41d4-a716-446655440000"));
 
         mockMvc.perform(post("/api/agent/chat")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -75,7 +81,8 @@ class AgentControllerTest {
                                 {"assistant":"HORAS_EXTRAS","message":"Olá"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("Olá! Como posso ajudar?"));
+                .andExpect(jsonPath("$.message").value("Olá! Como posso ajudar?"))
+                .andExpect(jsonPath("$.conversationId").value("550e8400-e29b-41d4-a716-446655440000"));
     }
 
     @Test

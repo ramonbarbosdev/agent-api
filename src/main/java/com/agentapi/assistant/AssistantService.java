@@ -11,12 +11,16 @@ import org.springframework.stereotype.Service;
 @Service
 public class AssistantService {
 
+    private static final String BASE_PROMPT_PATH = "prompts/base-system.txt";
     private static final String HORAS_EXTRAS_PROMPT_PATH = "prompts/horas-extras-system.txt";
 
     private final Map<AssistantType, Assistant> assistants = new EnumMap<>(AssistantType.class);
 
-    public AssistantService(PromptLoader promptLoader) {
-        String horasExtrasPrompt = promptLoader.load(HORAS_EXTRAS_PROMPT_PATH);
+    public AssistantService(PromptLoader promptLoader, PromptComposer promptComposer) {
+        String basePrompt = promptLoader.load(BASE_PROMPT_PATH);
+        String horasExtrasDomain = promptLoader.load(HORAS_EXTRAS_PROMPT_PATH);
+        String horasExtrasPrompt = promptComposer.compose(basePrompt, horasExtrasDomain);
+
         assistants.put(AssistantType.HORAS_EXTRAS, new Assistant(
                 AssistantType.HORAS_EXTRAS,
                 "Assistente de Horas Extras",

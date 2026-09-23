@@ -1,6 +1,8 @@
 package com.agentapi.llm;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +14,8 @@ import org.springframework.web.client.RestClientResponseException;
 import com.agentapi.config.OllamaProperties;
 import com.agentapi.exception.ErrorCode;
 import com.agentapi.exception.LlmException;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class OllamaClient implements LlmClient {
 
@@ -28,7 +32,12 @@ public class OllamaClient implements LlmClient {
     @Override
     public LlmResponse chat(LlmRequest request) {
         String model = request.model() != null ? request.model() : properties.getModel();
-        OllamaChatRequest body = new OllamaChatRequest(model, toOllamaMessages(request.messages()), false);
+        List<OllamaTool> tools = toOllamaTools(request.tools());
+        OllamaChatRequest body = new OllamaChatRequest(
+                model,
+                toOllamaMessages(request.messages()),
+                tools.isEmpty() ? null : tools,
+                false);
 
         try {
             OllamaChatResponse response = restClient.post()
@@ -50,11 +59,20 @@ public class OllamaClient implements LlmClient {
                     })
                     .body(OllamaChatResponse.class);
 
-            if (response == null || response.message == null || response.message.content == null) {
+            if (response == null || response.message == null) {
                 throw LlmException.of(ErrorCode.LLM_COMMUNICATION_ERROR,
                         "Resposta inválida do serviço de inteligência artificial.");
             }
-            return new LlmResponse(response.message.content);
+
+            String content = response.message.content != null ? response.message.content : "";
+            List<LlmToolCall> toolCalls = mapToolCalls(response.message.toolCalls);
+
+            if (content.isBlank() && toolCalls.isEmpty()) {
+                throw LlmException.of(ErrorCode.LLM_COMMUNICATION_ERROR,
+                        "Resposta vazia do serviço de inteligência artificial.");
+            }
+
+            return new LlmResponse(content, toolCalls);
         } catch (LlmException e) {
             throw e;
         } catch (ResourceAccessException e) {
@@ -77,10 +95,49 @@ public class OllamaClient implements LlmClient {
         }
     }
 
-    private static List<OllamaMessage> toOllamaMessages(List<LlmMessage> messages) {
-        return messages.stream()
-                .map(m -> new OllamaMessage(m.role(), m.content()))
+    private static List<OllamaTool> toOllamaTools(List<LlmToolDefinition> tools) {
+        if (tools == null || tools.isEmpty()) {
+            return List.of();
+        }
+        return tools.stream()
+                .map(tool -> new OllamaTool("function", new OllamaToolFunction(
+                        tool.name(),
+                        tool.description(),
+                        tool.parameters())))
                 .toList();
+    }
+
+    private static List<OllamaMessage> toOllamaMessages(List<LlmMessage> messages) {
+        return messages.stream().map(OllamaClient::toOllamaMessage).toList();
+    }
+
+    private static OllamaMessage toOllamaMessage(LlmMessage message) {
+        List<OllamaToolCall> ollamaToolCalls = null;
+        if (message.hasToolCalls()) {
+            ollamaToolCalls = message.toolCalls().stream()
+                    .map(call -> {
+                        OllamaToolCall mapped = new OllamaToolCall();
+                        mapped.function = new OllamaFunctionCall(call.name(), call.argumentsJson());
+                        return mapped;
+                    })
+                    .toList();
+        }
+        return new OllamaMessage(message.role(), message.content(), ollamaToolCalls);
+    }
+
+    private static List<LlmToolCall> mapToolCalls(List<OllamaToolCall> toolCalls) {
+        if (toolCalls == null || toolCalls.isEmpty()) {
+            return List.of();
+        }
+        List<LlmToolCall> mapped = new ArrayList<>();
+        for (OllamaToolCall call : toolCalls) {
+            if (call == null || call.function == null || call.function.name == null) {
+                continue;
+            }
+            String args = call.function.arguments != null ? call.function.arguments : "{}";
+            mapped.add(new LlmToolCall(call.function.name, args));
+        }
+        return mapped;
     }
 
     private static boolean indicatesModelNotFound(String body) {
@@ -114,13 +171,47 @@ public class OllamaClient implements LlmClient {
         }
     }
 
-    private record OllamaChatRequest(String model, List<OllamaMessage> messages, boolean stream) {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private record OllamaChatRequest(
+            String model,
+            List<OllamaMessage> messages,
+            List<OllamaTool> tools,
+            boolean stream) {
     }
 
-    private record OllamaMessage(String role, String content) {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private record OllamaMessage(
+            String role,
+            String content,
+            @JsonProperty("tool_calls") List<OllamaToolCall> toolCalls) {
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private record OllamaTool(String type, OllamaToolFunction function) {
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private record OllamaToolFunction(String name, String description, Map<String, Object> parameters) {
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private static class OllamaToolCall {
+        public OllamaFunctionCall function;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private record OllamaFunctionCall(String name, String arguments) {
     }
 
     private static class OllamaChatResponse {
-        public OllamaMessage message;
+        public OllamaResponseMessage message;
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private static class OllamaResponseMessage {
+        public String role;
+        public String content;
+        @JsonProperty("tool_calls")
+        public List<OllamaToolCall> toolCalls;
     }
 }
