@@ -51,7 +51,7 @@ ollama.model=${OLLAMA_MODEL:qwen3:8b}
 ollama.timeout=${OLLAMA_TIMEOUT:60s}
 ```
 
-CORS para o front em dev (`http://localhost:5173`) está em `config/WebConfig.java` (não usa `.env`).
+CORS e WebSocket: origens do front em `config/AgentCorsOrigins.java` (edite a lista no código).
 
 Variáveis podem ser definidas no `.env` na raiz do projeto (carregado antes do Spring Boot):
 
