@@ -29,7 +29,7 @@ public class AgentSystemPromptComposer {
 
         ragContextProvider.retrievalContext(context, userMessage).ifPresent(rag -> appendBlock(sb, "Contexto recuperado (documentos)", rag));
 
-        String catalog = toolCatalogFormatter.formatForAssistant(assistant.type());
+        String catalog = toolCatalogFormatter.formatForAssistant(assistant.code());
         if (!catalog.isBlank()) {
             appendBlock(sb, "Ferramentas", catalog);
         }

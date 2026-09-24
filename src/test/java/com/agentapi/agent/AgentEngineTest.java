@@ -19,8 +19,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.agentapi.agent.context.AgentTurnContext;
 import com.agentapi.agent.context.AgentTurnContextFactory;
 import com.agentapi.assistant.Assistant;
+import com.agentapi.assistant.AssistantCodes;
 import com.agentapi.assistant.AssistantService;
-import com.agentapi.assistant.AssistantType;
 import com.agentapi.config.AgentEngineProperties;
 import com.agentapi.llm.LlmClient;
 import com.agentapi.llm.LlmMessage;
@@ -59,12 +59,16 @@ class AgentEngineTest {
                 engineProperties);
 
         Assistant assistant = new Assistant(
-                AssistantType.HORAS_EXTRAS,
+                UUID.randomUUID(),
+                AssistantCodes.HORAS_EXTRAS,
                 "HE",
                 "desc",
                 "system",
-                null);
-        when(assistantService.find(AssistantType.HORAS_EXTRAS)).thenReturn(Optional.of(assistant));
+                null,
+                true,
+                true,
+                4);
+        when(assistantService.findActiveByCode(AssistantCodes.HORAS_EXTRAS)).thenReturn(Optional.of(assistant));
     }
 
     @Test
@@ -87,7 +91,7 @@ class AgentEngineTest {
                 .thenReturn(ToolResult.ok("{\"resumo\":\"aprovacao obrigatoria\"}"));
 
         AgentContext context = AgentContext.builder()
-                .assistant(AssistantType.HORAS_EXTRAS)
+                .assistantCode(AssistantCodes.HORAS_EXTRAS)
                 .conversationId(UUID.randomUUID())
                 .build();
 

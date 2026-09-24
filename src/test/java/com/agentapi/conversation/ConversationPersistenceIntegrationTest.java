@@ -11,7 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import com.agentapi.assistant.AssistantType;
+import com.agentapi.assistant.AssistantCodes;
 import com.agentapi.llm.LlmClient;
 import com.agentapi.web.AgentChatHistoryMessage;
 
@@ -28,7 +28,7 @@ class ConversationPersistenceIntegrationTest {
     @Test
     void persistsAndReloadsHistory() {
         UUID id = UUID.randomUUID();
-        conversationService.ensureConversation(id, AssistantType.HORAS_EXTRAS, null);
+        conversationService.ensureConversation(id, AssistantCodes.HORAS_EXTRAS, null);
         conversationService.appendTurn(id, "Pergunta 1", "Resposta 1");
 
         List<AgentChatHistoryMessage> history = conversationService.loadHistoryForLlm(id);

@@ -17,7 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.agentapi.assistant.AssistantType;
+import com.agentapi.assistant.AssistantCodes;
 import com.agentapi.config.ConversationProperties;
 import com.agentapi.conversation.persistence.ConversaEntity;
 import com.agentapi.conversation.persistence.ConversaRepository;
@@ -69,7 +69,7 @@ class ConversationServiceTest {
         when(conversaRepository.findById(id)).thenReturn(Optional.empty());
         when(conversaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.ensureConversation(id, AssistantType.HORAS_EXTRAS, null);
+        service.ensureConversation(id, AssistantCodes.HORAS_EXTRAS, null);
 
         verify(conversaRepository).save(any(ConversaEntity.class));
     }
@@ -80,7 +80,7 @@ class ConversationServiceTest {
         when(conversaRepository.findById(id))
                 .thenReturn(Optional.of(new ConversaEntity(id, "FINANCEIRO", null)));
 
-        assertThatThrownBy(() -> service.ensureConversation(id, AssistantType.HORAS_EXTRAS, null))
+        assertThatThrownBy(() -> service.ensureConversation(id, AssistantCodes.HORAS_EXTRAS, null))
                 .isInstanceOf(ApiException.class);
     }
 
@@ -90,7 +90,7 @@ class ConversationServiceTest {
         when(conversaRepository.findById(id))
                 .thenReturn(Optional.of(new ConversaEntity(id, "HORAS_EXTRAS", null)));
 
-        service.ensureConversation(id, AssistantType.HORAS_EXTRAS, null);
+        service.ensureConversation(id, AssistantCodes.HORAS_EXTRAS, null);
 
         verify(conversaRepository, never()).save(any());
     }

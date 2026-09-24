@@ -4,20 +4,18 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
 
-import com.agentapi.assistant.AssistantType;
-
 public class AgentContext {
 
     private final UUID userId;
     private final String phoneNumber;
-    private final AssistantType assistant;
+    private final String assistantCode;
     private final UUID conversationId;
     private final Set<String> permissions;
 
     private AgentContext(Builder builder) {
         this.userId = builder.userId;
         this.phoneNumber = builder.phoneNumber;
-        this.assistant = builder.assistant;
+        this.assistantCode = builder.assistantCode;
         this.conversationId = builder.conversationId;
         this.permissions = builder.permissions != null
                 ? Set.copyOf(builder.permissions)
@@ -32,8 +30,8 @@ public class AgentContext {
         return phoneNumber;
     }
 
-    public AssistantType getAssistant() {
-        return assistant;
+    public String getAssistantCode() {
+        return assistantCode;
     }
 
     public UUID getConversationId() {
@@ -52,7 +50,7 @@ public class AgentContext {
 
         private UUID userId;
         private String phoneNumber;
-        private AssistantType assistant;
+        private String assistantCode;
         private UUID conversationId;
         private Set<String> permissions;
 
@@ -66,8 +64,8 @@ public class AgentContext {
             return this;
         }
 
-        public Builder assistant(AssistantType assistant) {
-            this.assistant = assistant;
+        public Builder assistantCode(String assistantCode) {
+            this.assistantCode = assistantCode;
             return this;
         }
 

@@ -7,8 +7,8 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 import com.agentapi.assistant.Assistant;
+import com.agentapi.assistant.AssistantCodes;
 import com.agentapi.assistant.AssistantService;
-import com.agentapi.assistant.AssistantType;
 import com.agentapi.config.LlmProperties;
 import com.agentapi.config.OllamaProperties;
 import com.agentapi.llm.OllamaProbe;
@@ -119,10 +119,10 @@ public class AgentStatusService {
 
     private List<AssistantStatusDto> buildAssistantList() {
         List<AssistantStatusDto> result = new ArrayList<>();
-        for (Assistant assistant : assistantService.listAll()) {
+        for (Assistant assistant : assistantService.listActive()) {
             String model = assistant.resolveModel(ollamaProperties.getModel());
             result.add(new AssistantStatusDto(
-                    assistant.type().name(),
+                    assistant.code(),
                     assistant.name(),
                     assistant.description(),
                     model,
@@ -135,8 +135,10 @@ public class AgentStatusService {
         if (assistantParam == null || assistantParam.isBlank()) {
             return null;
         }
-        return AssistantType.fromString(assistantParam)
-                .map(AssistantType::name)
-                .orElse(assistantParam.trim().toUpperCase());
+        String normalized = AssistantCodes.normalize(assistantParam);
+        if (assistantService.findActiveByCode(normalized).isPresent()) {
+            return normalized;
+        }
+        return normalized;
     }
 }

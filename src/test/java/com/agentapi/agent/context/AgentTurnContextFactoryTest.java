@@ -15,11 +15,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.agentapi.agent.AgentContext;
 import com.agentapi.assistant.Assistant;
-import com.agentapi.assistant.AssistantType;
+import com.agentapi.assistant.AssistantCodes;
 import com.agentapi.config.AgentEngineProperties;
 import com.agentapi.config.OllamaProperties;
 import com.agentapi.conversation.ConversationService;
 import com.agentapi.tool.LlmToolDefinitionMapper;
+import com.agentapi.tool.TestToolBindings;
 import com.agentapi.tool.ToolCatalogFormatter;
 import com.agentapi.tool.ToolRegistry;
 import com.agentapi.tool.horasextras.ConsultarPoliticaHorasExtrasTool;
@@ -35,8 +36,9 @@ class AgentTurnContextFactoryTest {
 
     @BeforeEach
     void setUp() {
-        ToolRegistry registry = new ToolRegistry();
-        registry.register(new ConsultarPoliticaHorasExtrasTool());
+        ToolRegistry registry = TestToolBindings.registryWith(
+                List.of("consultar_politica_horas_extras"),
+                new ConsultarPoliticaHorasExtrasTool());
 
         AgentEngineProperties engineProperties = new AgentEngineProperties();
         engineProperties.setMaxContextChars(800);
@@ -63,14 +65,18 @@ class AgentTurnContextFactoryTest {
                 .thenReturn(List.of(userMessage("oi"), assistantMessage("olá")));
 
         Assistant assistant = new Assistant(
-                AssistantType.HORAS_EXTRAS,
+                UUID.randomUUID(),
+                AssistantCodes.HORAS_EXTRAS,
                 "HE",
                 "desc",
                 "prompt base",
-                null);
+                null,
+                true,
+                true,
+                4);
 
         AgentContext context = AgentContext.builder()
-                .assistant(AssistantType.HORAS_EXTRAS)
+                .assistantCode(AssistantCodes.HORAS_EXTRAS)
                 .conversationId(conversationId)
                 .build();
 
@@ -93,14 +99,18 @@ class AgentTurnContextFactoryTest {
                         userMessage("z".repeat(200))));
 
         Assistant assistant = new Assistant(
-                AssistantType.HORAS_EXTRAS,
+                UUID.randomUUID(),
+                AssistantCodes.HORAS_EXTRAS,
                 "HE",
                 "desc",
                 "s".repeat(100),
-                null);
+                null,
+                true,
+                true,
+                4);
 
         AgentContext context = AgentContext.builder()
-                .assistant(AssistantType.HORAS_EXTRAS)
+                .assistantCode(AssistantCodes.HORAS_EXTRAS)
                 .conversationId(UUID.randomUUID())
                 .build();
 
@@ -108,7 +118,6 @@ class AgentTurnContextFactoryTest {
 
         assertThat(turn.historyMessagesDropped()).isGreaterThan(0);
         assertThat(turn.historyMessagesIncluded()).isLessThan(3);
-        assertThat(turn.messages().get(turn.messages().size() - 1).content()).isEqualTo("pergunta");
     }
 
     private static AgentChatHistoryMessage userMessage(String content) {

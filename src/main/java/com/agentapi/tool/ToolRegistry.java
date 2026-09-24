@@ -10,12 +10,15 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
-import com.agentapi.assistant.AssistantType;
-
 @Component
 public class ToolRegistry {
 
     private final Map<String, AgentTool> tools = new ConcurrentHashMap<>();
+    private final AssistantToolBindingService bindingService;
+
+    public ToolRegistry(AssistantToolBindingService bindingService) {
+        this.bindingService = bindingService;
+    }
 
     public void register(AgentTool tool) {
         tools.put(tool.name(), tool);
@@ -29,9 +32,11 @@ public class ToolRegistry {
         return List.copyOf(tools.values());
     }
 
-    public List<AgentTool> listForAssistant(AssistantType assistant) {
-        return tools.values().stream()
-                .filter(tool -> tool.supportsAssistant(assistant))
+    public List<AgentTool> listForAssistant(String assistantCode) {
+        List<String> allowed = bindingService.toolNamesForAssistant(assistantCode);
+        return allowed.stream()
+                .map(tools::get)
+                .filter(tool -> tool != null)
                 .sorted((a, b) -> a.name().compareTo(b.name()))
                 .collect(Collectors.toCollection(ArrayList::new));
     }

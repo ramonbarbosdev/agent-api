@@ -3,12 +3,9 @@ package com.agentapi.rag.tool;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
 import org.springframework.stereotype.Component;
 
 import com.agentapi.agent.AgentContext;
-import com.agentapi.assistant.AssistantType;
 import com.agentapi.rag.RagContextFormatter;
 import com.agentapi.rag.RagHit;
 import com.agentapi.rag.RagSearchService;
@@ -40,11 +37,6 @@ public class SearchKnowledgeBaseTool implements AgentTool {
     @Override
     public ToolKind kind() {
         return ToolKind.READ;
-    }
-
-    @Override
-    public Set<AssistantType> assistants() {
-        return Set.of(AssistantType.HORAS_EXTRAS);
     }
 
     @Override

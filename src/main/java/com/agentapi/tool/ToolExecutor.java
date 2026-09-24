@@ -1,5 +1,8 @@
 package com.agentapi.tool;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -33,11 +36,14 @@ public class ToolExecutor {
                         ErrorCode.TOOL_NOT_FOUND,
                         "Ferramenta não encontrada: " + toolName));
 
-        if (!tool.supportsAssistant(context.getAssistant())) {
+        Set<String> allowed = toolRegistry.listForAssistant(context.getAssistantCode()).stream()
+                .map(AgentTool::name)
+                .collect(Collectors.toSet());
+        if (!allowed.contains(toolName)) {
             throw new ToolException(
                     ErrorCode.TOOL_NOT_ALLOWED,
                     "A ferramenta " + toolName + " não está disponível para o assistente "
-                            + context.getAssistant().name());
+                            + context.getAssistantCode());
         }
 
         if (!agentPolicy.canExecuteTool(context, tool)) {
@@ -50,7 +56,7 @@ public class ToolExecutor {
         JsonNode arguments = parseArguments(argumentsJson);
 
         log.info("Tool execution started (tool={}, assistant={}, conversationId={})",
-                toolName, context.getAssistant(), context.getConversationId());
+                toolName, context.getAssistantCode(), context.getConversationId());
 
         long started = System.currentTimeMillis();
         try {

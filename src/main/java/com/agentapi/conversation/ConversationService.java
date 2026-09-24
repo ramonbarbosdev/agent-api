@@ -6,7 +6,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.agentapi.assistant.AssistantType;
+import com.agentapi.assistant.AssistantCodes;
 import com.agentapi.config.ConversationProperties;
 import com.agentapi.conversation.persistence.ConversaEntity;
 import com.agentapi.conversation.persistence.ConversaRepository;
@@ -46,22 +46,23 @@ public class ConversationService {
     }
 
     @Transactional
-    public void ensureConversation(UUID idConversa, AssistantType assistant, UUID idUsuario) {
+    public void ensureConversation(UUID idConversa, String assistantCode, UUID idUsuario) {
+        String normalized = AssistantCodes.normalize(assistantCode);
         conversaRepository.findById(idConversa).ifPresentOrElse(
                 existing -> {
-                    if (!existing.getNmAssistente().equals(assistant.name())) {
+                    if (!existing.getNmAssistente().equalsIgnoreCase(normalized)) {
                         throw new ApiException(
                                 ErrorCode.INVALID_REQUEST,
                                 "Esta conversa pertence ao assistente "
                                         + existing.getNmAssistente()
                                         + ". Inicie uma nova conversa para "
-                                        + assistant.name()
+                                        + normalized
                                         + ".");
                     }
                 },
                 () -> conversaRepository.save(new ConversaEntity(
                         idConversa,
-                        assistant.name(),
+                        normalized,
                         idUsuario)));
     }
 

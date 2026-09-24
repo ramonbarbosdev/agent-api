@@ -205,6 +205,21 @@ user:
 
 ---
 
+## 9. Assistentes configuráveis (admin)
+
+**Objetivo:** Criar/editar assistentes pela UI sem enum nem deploy.
+
+### Entregáveis
+
+- [x] Tabelas `agent.assistente` / `assistente_tool` (Flyway V5).
+- [x] CRUD API + catálogo de tools.
+- [x] Runtime: chat, tools e RAG por código do assistente.
+- [x] Bootstrap `HORAS_EXTRAS` se o banco estiver vazio.
+- [x] Front: `/agent/assistants` + seletor dinâmico no playground.
+- [ ] Auth/admin por perfil; tools HTTP externas.
+
+---
+
 ## 7. Avaliação
 
 **Objetivo:** Medir qualidade antes de mudar modelo ou fazer fine-tuning.

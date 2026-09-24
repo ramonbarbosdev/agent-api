@@ -48,16 +48,16 @@ public class AgentEngine {
 
     public String run(AgentContext context, String userMessage, List<AgentChatHistoryMessage> clientHistoryFallback) {
         log.info("Agent request received (assistant={}, conversationId={})",
-                context.getAssistant(), context.getConversationId());
+                context.getAssistantCode(), context.getConversationId());
 
-        Assistant assistant = assistantService.find(context.getAssistant())
-                .orElseThrow(() -> new AssistantNotFoundException(context.getAssistant().name()));
+        Assistant assistant = assistantService.findActiveByCode(context.getAssistantCode())
+                .orElseThrow(() -> new AssistantNotFoundException(context.getAssistantCode()));
 
         AgentTurnContext turn = turnContextFactory.build(context, assistant, userMessage, clientHistoryFallback);
 
         log.info(
                 "Turn context assembled (assistant={}, historyMessages={}, dropped={}, tools={})",
-                assistant.type().name(),
+                assistant.code(),
                 turn.historyMessagesIncluded(),
                 turn.historyMessagesDropped(),
                 turn.tools().size());
@@ -75,12 +75,12 @@ public class AgentEngine {
                     : new LlmRequest(model, messages, tools);
 
             log.info("LLM request started (assistant={}, model={}, step={}, tools={})",
-                    assistant.type().name(), model, step + 1, tools.size());
+                    assistant.code(), model, step + 1, tools.size());
 
             long started = System.currentTimeMillis();
             lastResponse = llmClient.chat(request);
             log.info("LLM response received (assistant={}, step={}, toolCalls={}, latencyMs={})",
-                    assistant.type().name(),
+                    assistant.code(),
                     step + 1,
                     lastResponse.toolCalls().size(),
                     System.currentTimeMillis() - started);
@@ -105,7 +105,7 @@ public class AgentEngine {
             return "Não consegui concluir a operação dentro do limite de passos de ferramentas. Tente reformular o pedido.";
         }
 
-        log.info("Agent request completed (assistant={})", assistant.type().name());
+        log.info("Agent request completed (assistant={})", assistant.code());
         return lastResponse.content();
     }
 

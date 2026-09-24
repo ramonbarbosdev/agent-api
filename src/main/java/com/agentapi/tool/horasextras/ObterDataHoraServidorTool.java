@@ -4,12 +4,9 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
 import org.springframework.stereotype.Component;
 
 import com.agentapi.agent.AgentContext;
-import com.agentapi.assistant.AssistantType;
 import com.agentapi.tool.AgentTool;
 import com.agentapi.tool.ToolKind;
 import com.agentapi.tool.ToolResult;
@@ -34,11 +31,6 @@ public class ObterDataHoraServidorTool implements AgentTool {
     @Override
     public ToolKind kind() {
         return ToolKind.READ;
-    }
-
-    @Override
-    public Set<AssistantType> assistants() {
-        return Set.of(AssistantType.HORAS_EXTRAS);
     }
 
     @Override

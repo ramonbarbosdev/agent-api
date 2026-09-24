@@ -5,8 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.agentapi.agent.AgentContext;
-import com.agentapi.assistant.AssistantType;
-import com.agentapi.exception.AssistantNotFoundException;
+import com.agentapi.assistant.AssistantService;
 import com.agentapi.web.ToolDescriptorDto;
 import com.agentapi.web.ToolInvokeResponse;
 
@@ -15,15 +14,20 @@ public class ToolService {
 
     private final ToolRegistry toolRegistry;
     private final ToolExecutor toolExecutor;
+    private final AssistantService assistantService;
 
-    public ToolService(ToolRegistry toolRegistry, ToolExecutor toolExecutor) {
+    public ToolService(
+            ToolRegistry toolRegistry,
+            ToolExecutor toolExecutor,
+            AssistantService assistantService) {
         this.toolRegistry = toolRegistry;
         this.toolExecutor = toolExecutor;
+        this.assistantService = assistantService;
     }
 
     public List<ToolDescriptorDto> listForAssistant(String assistantParam) {
-        AssistantType assistant = resolveAssistant(assistantParam);
-        return toolRegistry.listForAssistant(assistant).stream()
+        String code = resolveAssistantCode(assistantParam);
+        return toolRegistry.listForAssistant(code).stream()
                 .map(tool -> new ToolDescriptorDto(
                         tool.name(),
                         tool.description(),
@@ -32,19 +36,23 @@ public class ToolService {
                 .toList();
     }
 
-    public ToolInvokeResponse invoke(AssistantType assistantType, String toolName, String argumentsJson) {
+    public ToolInvokeResponse invoke(String assistantParam, String toolName, String argumentsJson) {
+        String code = resolveAssistantCode(assistantParam);
         AgentContext context = AgentContext.builder()
-                .assistant(assistantType)
+                .assistantCode(code)
                 .build();
         ToolResult result = toolExecutor.execute(context, toolName, argumentsJson);
         return new ToolInvokeResponse(result.success(), result.content());
     }
 
-    private static AssistantType resolveAssistant(String assistantParam) {
+    private String resolveAssistantCode(String assistantParam) {
         if (assistantParam == null || assistantParam.isBlank()) {
-            return AssistantType.HORAS_EXTRAS;
+            return assistantService.listActive().stream()
+                    .findFirst()
+                    .map(a -> a.code())
+                    .orElseThrow(() -> new com.agentapi.exception.AssistantNotFoundException(assistantParam));
         }
-        return AssistantType.fromString(assistantParam)
-                .orElseThrow(() -> new AssistantNotFoundException(assistantParam));
+        assistantService.requireActiveByCode(assistantParam);
+        return com.agentapi.assistant.AssistantCodes.normalize(assistantParam);
     }
 }

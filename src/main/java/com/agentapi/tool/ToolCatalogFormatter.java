@@ -1,10 +1,6 @@
 package com.agentapi.tool;
 
-import java.util.List;
-
 import org.springframework.stereotype.Component;
-
-import com.agentapi.assistant.AssistantType;
 
 @Component
 public class ToolCatalogFormatter {
@@ -15,21 +11,15 @@ public class ToolCatalogFormatter {
         this.toolRegistry = toolRegistry;
     }
 
-    public String formatForAssistant(AssistantType assistant) {
-        List<AgentTool> tools = toolRegistry.listForAssistant(assistant);
-        if (tools.isEmpty()) {
-            return "";
-        }
-
+    public String formatForAssistant(String assistantCode) {
         StringBuilder sb = new StringBuilder();
-        sb.append("Ferramentas registradas na API (invocadas via tool calling do modelo; ");
-        sb.append("nunca invente resultado de ferramenta):\n");
-        for (AgentTool tool : tools) {
-            sb.append("- ").append(tool.name())
-                    .append(" [").append(tool.kind().name()).append("]: ")
-                    .append(tool.description())
-                    .append("\n");
+        for (AgentTool tool : toolRegistry.listForAssistant(assistantCode)) {
+            if (!sb.isEmpty()) {
+                sb.append("\n");
+            }
+            sb.append("- ").append(tool.name()).append(" (").append(tool.kind()).append("): ");
+            sb.append(tool.description());
         }
-        return sb.toString().trim();
+        return sb.toString();
     }
 }

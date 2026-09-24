@@ -1,5 +1,7 @@
 package com.agentapi.agent;
 
+import java.util.List;
+
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -8,10 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
-import com.agentapi.assistant.AssistantType;
-import com.agentapi.exception.AssistantNotFoundException;
 import com.agentapi.tool.ToolService;
 import com.agentapi.web.AgentChatRequest;
 import com.agentapi.web.AgentChatResponse;
@@ -62,8 +60,9 @@ public class AgentController {
 
     @PostMapping(value = "/tools/invoke", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ToolInvokeResponse invokeTool(@Valid @RequestBody ToolInvokeRequest request) {
-        AssistantType assistantType = AssistantType.fromString(request.getAssistant())
-                .orElseThrow(() -> new AssistantNotFoundException(request.getAssistant()));
-        return toolService.invoke(assistantType, request.getTool(), request.getArguments());
+        return toolService.invoke(
+                request.getAssistant(),
+                request.getTool(),
+                request.getArguments());
     }
 }

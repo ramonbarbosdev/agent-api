@@ -4,7 +4,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
-import com.agentapi.assistant.AssistantType;
+import com.agentapi.assistant.AssistantCodes;
+import com.agentapi.assistant.AssistantService;
 import com.agentapi.conversation.ConversationService;
 import com.agentapi.exception.AssistantNotFoundException;
 import com.agentapi.web.AgentChatRequest;
@@ -15,24 +16,32 @@ public class AgentService {
 
     private final AgentEngine agentEngine;
     private final ConversationService conversationService;
+    private final AssistantService assistantService;
 
-    public AgentService(AgentEngine agentEngine, ConversationService conversationService) {
+    public AgentService(
+            AgentEngine agentEngine,
+            ConversationService conversationService,
+            AssistantService assistantService) {
         this.agentEngine = agentEngine;
         this.conversationService = conversationService;
+        this.assistantService = assistantService;
     }
 
     public AgentChatResponse chat(AgentChatRequest request) {
-        AssistantType assistantType = AssistantType.fromString(request.getAssistant())
-                .orElseThrow(() -> new AssistantNotFoundException(request.getAssistant()));
+        String assistantCode = AssistantCodes.normalize(request.getAssistant());
+        if (assistantCode.isBlank()) {
+            throw new AssistantNotFoundException(request.getAssistant());
+        }
+        assistantService.requireActiveByCode(assistantCode);
 
         UUID conversationId = conversationService.resolveConversationId(request.getConversationId());
 
         AgentContext context = AgentContext.builder()
-                .assistant(assistantType)
+                .assistantCode(assistantCode)
                 .conversationId(conversationId)
                 .build();
 
-        conversationService.ensureConversation(conversationId, assistantType, context.getUserId());
+        conversationService.ensureConversation(conversationId, assistantCode, context.getUserId());
 
         String reply = agentEngine.run(context, request.getMessage(), request.getHistory());
 

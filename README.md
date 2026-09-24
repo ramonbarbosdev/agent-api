@@ -107,6 +107,23 @@ O playground em `http://localhost:5173` chama a API com CORS habilitado para ess
 
 `conversationId` é opcional: se omitido, a API gera um UUID e devolve em cada resposta. Mensagens são gravadas em PostgreSQL; o histórico enviado pelo cliente só é usado se a thread ainda não tiver mensagens no banco. O system prompt de cada assistente é `prompts/base-system.txt` + prompt de domínio (ex.: `horas-extras-system.txt`).
 
+## Assistentes configuráveis (fase 9)
+
+Assistentes ficam no PostgreSQL (`agent.assistente`, `agent.assistente_tool`). Na primeira subida sem registros, a API cria **HORAS_EXTRAS** com os prompts em `prompts/*.txt` e as tools padrão.
+
+| Método | Endpoint |
+|--------|----------|
+| GET | `/api/agent/assistants` (`?includeInactive=true`) |
+| GET | `/api/agent/assistants/{code}` |
+| POST | `/api/agent/assistants` |
+| PUT | `/api/agent/assistants/{code}` |
+| DELETE | `/api/agent/assistants/{code}` |
+| GET | `/api/agent/assistants/catalog/tools` |
+
+O chat continua usando `assistant` = **código** (ex.: `HORAS_EXTRAS`). Tools são vinculadas por nome no cadastro; implementação das tools permanece em Java.
+
+No front: menu **Assistentes** (`/agent/assistants`).
+
 ## RAG (fase 6)
 
 Com PostgreSQL e Flyway aplicados, a API indexa documentos no schema `agent` e injeta trechos relevantes no system prompt. Seed de desenvolvimento: politica de horas extras (`V4__rag_seed_politica_horas_extras.sql`).

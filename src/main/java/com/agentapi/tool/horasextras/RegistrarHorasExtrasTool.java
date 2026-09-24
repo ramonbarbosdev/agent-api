@@ -3,12 +3,9 @@ package com.agentapi.tool.horasextras;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
 import org.springframework.stereotype.Component;
 
 import com.agentapi.agent.AgentContext;
-import com.agentapi.assistant.AssistantType;
 import com.agentapi.tool.AgentTool;
 import com.agentapi.tool.ToolKind;
 import com.agentapi.tool.ToolResult;
@@ -35,11 +32,6 @@ public class RegistrarHorasExtrasTool implements AgentTool {
     @Override
     public ToolKind kind() {
         return ToolKind.WRITE;
-    }
-
-    @Override
-    public Set<AssistantType> assistants() {
-        return Set.of(AssistantType.HORAS_EXTRAS);
     }
 
     @Override

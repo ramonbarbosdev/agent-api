@@ -82,7 +82,7 @@ public class AgentTurnContextFactory {
         messages.add(LlmMessage.user(userMessage));
 
         String model = assistant.resolveModel(ollamaProperties.getModel());
-        List<LlmToolDefinition> tools = toolDefinitionMapper.definitionsFor(assistant.type());
+        List<LlmToolDefinition> tools = toolDefinitionMapper.definitionsFor(assistant.code());
 
         return new AgentTurnContext(
                 model,
