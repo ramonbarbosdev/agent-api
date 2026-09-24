@@ -18,8 +18,10 @@ import org.springframework.web.client.RestClientResponseException;
 import com.agentapi.config.OllamaProperties;
 import com.agentapi.exception.ErrorCode;
 import com.agentapi.exception.LlmException;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class OllamaClient implements LlmClient {
@@ -33,7 +35,8 @@ public class OllamaClient implements LlmClient {
     public OllamaClient(RestClient restClient, OllamaProperties properties) {
         this.restClient = restClient;
         this.properties = properties;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = new ObjectMapper()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
     @Override
@@ -307,14 +310,17 @@ public class OllamaClient implements LlmClient {
     private record OllamaFunctionCall(String name, String arguments) {
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private static class OllamaChatResponse {
         public OllamaResponseMessage message;
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private static class OllamaStreamChunk {
         public OllamaResponseMessage message;
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private static class OllamaResponseMessage {
         public String role;
