@@ -41,6 +41,26 @@ public class RagSearchService {
         return search(query, ragProperties.getTopK());
     }
 
+    /**
+     * Busca para chat: tenta variantes curtas da pergunta (FTS falha em frases longas com stopwords).
+     */
+    public List<RagHit> searchForChat(String userMessage) {
+        return searchForChat(userMessage, ragProperties.getTopK());
+    }
+
+    public List<RagHit> searchForChat(String userMessage, int topK) {
+        if (!ragProperties.isEnabled() || userMessage == null || userMessage.isBlank()) {
+            return List.of();
+        }
+        for (String query : RagQueryVariants.chatRetrievalQueries(userMessage)) {
+            List<RagHit> hits = search(query, topK);
+            if (!hits.isEmpty()) {
+                return hits;
+            }
+        }
+        return List.of();
+    }
+
     public List<RagHit> search(String query, int topK) {
         if (!ragProperties.isEnabled() || query == null || query.isBlank()) {
             return List.of();

@@ -16,6 +16,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.agentapi.agent.AgentContext;
 import com.agentapi.assistant.Assistant;
 import com.agentapi.assistant.AssistantCodes;
+import com.agentapi.assistant.PersonalSystemPromptResolver;
+import com.agentapi.assistant.PromptComposer;
+import com.agentapi.assistant.PromptLoader;
 import com.agentapi.config.AgentEngineProperties;
 import com.agentapi.config.OllamaProperties;
 import com.agentapi.conversation.ConversationService;
@@ -51,7 +54,8 @@ class AgentTurnContextFactoryTest {
                 new AgentSystemPromptComposer(
                         new ToolCatalogFormatter(registry),
                         new NoOpConversationMemoryProvider(),
-                        new NoOpRagContextProvider()),
+                        new NoOpRagContextProvider(),
+                        new PersonalSystemPromptResolver(new PromptLoader(), new PromptComposer())),
                 new LlmToolDefinitionMapper(registry),
                 new ContextWindowTrimmer(),
                 ollamaProperties,

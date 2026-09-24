@@ -31,7 +31,7 @@ public class SearchKnowledgeBaseTool implements AgentTool {
 
     @Override
     public String description() {
-        return "Busca trechos em documentos indexados (politicas, manuais) para responder com base em fontes.";
+        return "Busca trechos na base de conhecimento (notas pessoais, projetos, politicas) antes de responder fatos especificos.";
     }
 
     @Override
@@ -52,7 +52,7 @@ public class SearchKnowledgeBaseTool implements AgentTool {
             return ToolResult.fail("Informe o parametro query.");
         }
         String query = arguments.get("query").asText().trim();
-        List<RagHit> hits = ragSearchService.search(query);
+        List<RagHit> hits = ragSearchService.searchForChat(query);
         if (hits.isEmpty()) {
             return ToolResult.ok("{\"encontrados\":0,\"mensagem\":\"Nenhum trecho relevante na base.\"}");
         }

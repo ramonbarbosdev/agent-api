@@ -52,7 +52,7 @@ public class DatabaseRagContextProvider implements RagContextProvider {
         int topK = assistant.get().ragTopK() > 0 ? assistant.get().ragTopK() : ragProperties.getTopK();
         List<RagHit> hits;
         try {
-            hits = ragSearchService.search(userMessage, topK);
+            hits = ragSearchService.searchForChat(userMessage, topK);
         } catch (Exception ex) {
             log.warn("RAG search failed (assistant={}): {}", context.getAssistantCode(), ex.getMessage());
             return Optional.empty();

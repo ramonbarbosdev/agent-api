@@ -12,10 +12,10 @@ public final class RagContextFormatter {
             return "";
         }
         StringBuilder sb = new StringBuilder();
-        sb.append("Estes trechos JA foram buscados na base indexada; nao e necessario chamar ferramenta de busca. ");
-        sb.append("Responda usando SOMENTE o texto abaixo para fatos, prazos e codigos. ");
-        sb.append("Reproduza numeros literalmente (ex.: 17 dias uteis, nao outro valor). ");
-        sb.append("Se nenhum trecho abaixo responder a pergunta, diga que nao encontrou na base.\n");
+        sb.append("Trechos ja recuperados da base indexada para a pergunta do usuario. ");
+        sb.append("Responda em portugues natural usando SOMENTE o texto abaixo — nao diga 'consulte a base' nem cite ferramentas. ");
+        sb.append("Mencione o titulo do documento quando usar um trecho. ");
+        sb.append("Se nada abaixo responder, diga que nao encontrou na base.\n");
         int index = 1;
         for (RagHit hit : hits) {
             sb.append("\n[").append(index++).append("] ");

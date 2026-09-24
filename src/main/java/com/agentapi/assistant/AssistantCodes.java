@@ -2,6 +2,7 @@ package com.agentapi.assistant;
 
 public final class AssistantCodes {
 
+    public static final String PERSONAL = "PERSONAL";
     public static final String HORAS_EXTRAS = "HORAS_EXTRAS";
 
     private AssistantCodes() {

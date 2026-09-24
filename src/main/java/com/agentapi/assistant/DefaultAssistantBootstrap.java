@@ -22,7 +22,11 @@ public class DefaultAssistantBootstrap {
     private static final Logger log = LoggerFactory.getLogger(DefaultAssistantBootstrap.class);
 
     private static final String BASE_PROMPT_PATH = "prompts/base-system.txt";
-    private static final String HORAS_EXTRAS_PROMPT_PATH = "prompts/horas-extras-system.txt";
+    private static final String PERSONAL_PROMPT_PATH = "prompts/personal-system.txt";
+
+    private static final List<String> PERSONAL_TOOLS = List.of(
+            "obter_data_hora_servidor",
+            "search_knowledge_base");
 
     private final AssistenteRepository assistenteRepository;
     private final AssistenteToolRepository assistenteToolRepository;
@@ -43,34 +47,30 @@ public class DefaultAssistantBootstrap {
     @EventListener(ApplicationReadyEvent.class)
     @Order(100)
     @Transactional
-    public void seedDefaultAssistantIfEmpty() {
-        if (assistenteRepository.count() > 0) {
+    public void ensurePersonalAssistant() {
+        if (assistenteRepository.findByCdAssistenteIgnoreCase(AssistantCodes.PERSONAL).isPresent()) {
             return;
         }
-        log.info("Nenhum assistente no banco; criando padrão {}", AssistantCodes.HORAS_EXTRAS);
+        log.info("Assistente {} não encontrado; criando padrão pessoal", AssistantCodes.PERSONAL);
 
         String prompt = promptComposer.compose(
                 promptLoader.load(BASE_PROMPT_PATH),
-                promptLoader.load(HORAS_EXTRAS_PROMPT_PATH));
+                promptLoader.load(PERSONAL_PROMPT_PATH));
 
         UUID id = UUID.randomUUID();
         AssistenteEntity entity = new AssistenteEntity();
         entity.setIdAssistente(id);
-        entity.setCdAssistente(AssistantCodes.HORAS_EXTRAS);
-        entity.setNmNome("Assistente de Horas Extras");
-        entity.setDsDescricao("Auxilia consultas e gestão de horas extras.");
+        entity.setCdAssistente(AssistantCodes.PERSONAL);
+        entity.setNmNome("Assistente pessoal");
+        entity.setDsDescricao("Assistente pessoal — conversa, RAG e ferramentas básicas.");
         entity.setDsSystemPrompt(prompt);
         entity.setNmModelo(null);
         entity.setFlAtivo(true);
         entity.setFlRagInject(true);
-        entity.setNuRagTopK(4);
+        entity.setNuRagTopK(6);
         assistenteRepository.save(entity);
 
-        for (String tool : List.of(
-                "obter_data_hora_servidor",
-                "consultar_politica_horas_extras",
-                "search_knowledge_base",
-                "registrar_horas_extras")) {
+        for (String tool : PERSONAL_TOOLS) {
             assistenteToolRepository.save(new AssistenteToolEntity(UUID.randomUUID(), id, tool));
         }
     }
