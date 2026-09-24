@@ -10,6 +10,10 @@ public class OllamaProperties {
     private String baseUrl = "http://localhost:11434";
     private String model = "qwen3:8b";
     private Duration timeout = Duration.ofSeconds(60);
+    /**
+     * Temperatura do chat Ollama (menor = mais fiel ao contexto, menos inventar numeros).
+     */
+    private double temperature = 0.2;
 
     public String getBaseUrl() {
         return baseUrl;
@@ -33,5 +37,13 @@ public class OllamaProperties {
 
     public void setTimeout(Duration timeout) {
         this.timeout = timeout;
+    }
+
+    public double getTemperature() {
+        return temperature;
+    }
+
+    public void setTemperature(double temperature) {
+        this.temperature = temperature;
     }
 }

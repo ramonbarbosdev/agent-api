@@ -10,6 +10,9 @@ import com.agentapi.conversation.ConversationService;
 import com.agentapi.exception.AssistantNotFoundException;
 import com.agentapi.web.AgentChatRequest;
 import com.agentapi.web.AgentChatResponse;
+import com.agentapi.web.AgentChatStreamRequest;
+
+import java.util.List;
 
 @Service
 public class AgentService {
@@ -44,6 +47,29 @@ public class AgentService {
         conversationService.ensureConversation(conversationId, assistantCode, context.getUserId());
 
         String reply = agentEngine.run(context, request.getMessage(), request.getHistory());
+
+        conversationService.appendTurn(conversationId, request.getMessage(), reply);
+
+        return new AgentChatResponse(reply, conversationId.toString());
+    }
+
+    public AgentChatResponse chatStream(AgentChatStreamRequest request, AgentStreamEmitter emitter) {
+        String assistantCode = AssistantCodes.normalize(request.getAssistant());
+        if (assistantCode.isBlank()) {
+            throw new AssistantNotFoundException(request.getAssistant());
+        }
+        assistantService.requireActiveByCode(assistantCode);
+
+        UUID conversationId = conversationService.resolveConversationId(request.getConversationId());
+
+        AgentContext context = AgentContext.builder()
+                .assistantCode(assistantCode)
+                .conversationId(conversationId)
+                .build();
+
+        conversationService.ensureConversation(conversationId, assistantCode, context.getUserId());
+
+        String reply = agentEngine.runStream(context, request.getMessage(), List.of(), emitter);
 
         conversationService.appendTurn(conversationId, request.getMessage(), reply);
 

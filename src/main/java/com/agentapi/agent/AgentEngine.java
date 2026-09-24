@@ -109,6 +109,80 @@ public class AgentEngine {
         return lastResponse.content();
     }
 
+    public String runStream(
+            AgentContext context,
+            String userMessage,
+            List<AgentChatHistoryMessage> clientHistoryFallback,
+            AgentStreamEmitter emitter) {
+        log.info("Agent stream request received (assistant={}, conversationId={})",
+                context.getAssistantCode(), context.getConversationId());
+
+        Assistant assistant = assistantService.findActiveByCode(context.getAssistantCode())
+                .orElseThrow(() -> new AssistantNotFoundException(context.getAssistantCode()));
+
+        AgentTurnContext turn = turnContextFactory.build(context, assistant, userMessage, clientHistoryFallback);
+
+        List<LlmMessage> messages = turn.mutableMessages();
+        String model = turn.model();
+        var tools = turn.tools();
+
+        int maxSteps = Math.max(1, engineProperties.getMaxToolSteps());
+        LlmResponse lastResponse = null;
+
+        for (int step = 0; step < maxSteps; step++) {
+            LlmRequest request = tools.isEmpty()
+                    ? new LlmRequest(model, messages)
+                    : new LlmRequest(model, messages, tools);
+
+            log.info("LLM stream step started (assistant={}, model={}, step={}, tools={})",
+                    assistant.code(), model, step + 1, tools.size());
+
+            long started = System.currentTimeMillis();
+            if (tools.isEmpty()) {
+                lastResponse = llmClient.chatStream(request, emitter::onToken);
+            } else {
+                if (step > 0) {
+                    emitter.onPhase("Processando resultado das ferramentas…");
+                } else {
+                    emitter.onPhase("Consultando ferramentas…");
+                }
+                lastResponse = llmClient.chat(request);
+                String content = lastResponse.content();
+                if (content != null && !content.isEmpty()) {
+                    emitter.onToken(content);
+                }
+            }
+
+            log.info("LLM stream step finished (assistant={}, step={}, toolCalls={}, latencyMs={})",
+                    assistant.code(),
+                    step + 1,
+                    lastResponse.toolCalls().size(),
+                    System.currentTimeMillis() - started);
+
+            if (!lastResponse.hasToolCalls()) {
+                break;
+            }
+
+            messages.add(LlmMessage.assistantToolCalls(lastResponse.content(), lastResponse.toolCalls()));
+            appendToolResults(context, messages, lastResponse.toolCalls());
+        }
+
+        if (lastResponse == null) {
+            return "Não foi possível obter resposta do assistente.";
+        }
+
+        if (lastResponse.hasToolCalls()) {
+            log.warn("Max tool steps ({}) reached during stream", maxSteps);
+            if (!lastResponse.content().isBlank()) {
+                return lastResponse.content();
+            }
+            return "Não consegui concluir a operação dentro do limite de passos de ferramentas. Tente reformular o pedido.";
+        }
+
+        log.info("Agent stream completed (assistant={})", assistant.code());
+        return lastResponse.content();
+    }
+
     private void appendToolResults(AgentContext context, List<LlmMessage> messages, List<LlmToolCall> toolCalls) {
         for (LlmToolCall call : toolCalls) {
             String payload = executeToolCall(context, call);

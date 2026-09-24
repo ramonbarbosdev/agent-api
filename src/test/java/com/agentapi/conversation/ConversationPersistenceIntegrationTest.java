@@ -38,5 +38,10 @@ class ConversationPersistenceIntegrationTest {
         assertThat(history.get(0).getContent()).isEqualTo("Pergunta 1");
         assertThat(history.get(1).getRole()).isEqualTo("assistant");
         assertThat(history.get(1).getContent()).isEqualTo("Resposta 1");
+
+        var clientMessages = conversationService.loadMessagesForClient(id);
+        assertThat(clientMessages).hasSize(2);
+        assertThat(clientMessages.get(0).role()).isEqualTo("user");
+        assertThat(clientMessages.get(1).content()).isEqualTo("Resposta 1");
     }
 }

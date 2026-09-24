@@ -1,5 +1,6 @@
 package com.agentapi.conversation;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,9 +16,12 @@ import com.agentapi.conversation.persistence.MensagemConversaRepository;
 import com.agentapi.exception.ApiException;
 import com.agentapi.exception.ErrorCode;
 import com.agentapi.web.AgentChatHistoryMessage;
+import com.agentapi.web.ConversationMessageDto;
 
 @Service
 public class ConversationService {
+
+    private static final DateTimeFormatter ISO = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     private final ConversaRepository conversaRepository;
     private final MensagemConversaRepository mensagemConversaRepository;
@@ -64,6 +68,20 @@ public class ConversationService {
                         idConversa,
                         normalized,
                         idUsuario)));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConversationMessageDto> loadMessagesForClient(UUID idConversa) {
+        if (!conversaRepository.existsById(idConversa)) {
+            return List.of();
+        }
+        return mensagemConversaRepository.findByIdConversaOrderByDtCriacaoAsc(idConversa).stream()
+                .map(m -> new ConversationMessageDto(
+                        m.getIdMensagemConversa().toString(),
+                        m.getTpPapel(),
+                        m.getDsConteudo(),
+                        m.getDtCriacao() != null ? ISO.format(m.getDtCriacao()) : ""))
+                .toList();
     }
 
     @Transactional(readOnly = true)

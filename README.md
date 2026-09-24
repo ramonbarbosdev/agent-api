@@ -142,6 +142,22 @@ curl -s -X POST http://localhost:8080/api/agent/rag/documents \
   -d '{"titulo":"Manual HE","fonte":"RH 2026","conteudo":"Texto completo do manual..."}'
 ```
 
+Listar documentos indexados:
+
+```bash
+curl -s "http://localhost:8080/api/agent/rag/documents"
+```
+
+Obter, atualizar (reindexa trechos) ou excluir:
+
+```bash
+curl -s "http://localhost:8080/api/agent/rag/documents/{documentoId}"
+curl -s -X PUT "http://localhost:8080/api/agent/rag/documents/{documentoId}" \
+  -H "Content-Type: application/json" \
+  -d '{"titulo":"...","fonte":"...","conteudo":"..."}'
+curl -s -X DELETE "http://localhost:8080/api/agent/rag/documents/{documentoId}"
+```
+
 Tool do assistente: `search_knowledge_base`. Desligar RAG: `AGENT_RAG_ENABLED=false`.
 
 ## Ferramentas (tools) — fase 3

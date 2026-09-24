@@ -10,6 +10,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface DocumentoChunkRepository extends JpaRepository<DocumentoChunkEntity, UUID> {
 
+    long countByIdDocumento(UUID idDocumento);
+
+    void deleteByIdDocumento(UUID idDocumento);
+
     @Query("""
             SELECT c FROM DocumentoChunkEntity c
             WHERE LOWER(c.dsConteudo) LIKE LOWER(CONCAT('%', :term, '%'))

@@ -1,5 +1,7 @@
 package com.agentapi.agent.context;
 
+import java.util.Optional;
+
 import org.springframework.stereotype.Component;
 
 import com.agentapi.agent.AgentContext;
@@ -27,11 +29,20 @@ public class AgentSystemPromptComposer {
 
         memoryProvider.longTermMemory(context).ifPresent(memory -> appendBlock(sb, "Memória da conversa", memory));
 
-        ragContextProvider.retrievalContext(context, userMessage).ifPresent(rag -> appendBlock(sb, "Contexto recuperado (documentos)", rag));
+        Optional<String> ragContext = ragContextProvider.retrievalContext(context, userMessage);
+        ragContext.ifPresent(rag ->
+                appendBlock(sb, "Base de conhecimento (trechos já recuperados para esta pergunta)", rag));
 
         String catalog = toolCatalogFormatter.formatForAssistant(assistant.code());
         if (!catalog.isBlank()) {
             appendBlock(sb, "Ferramentas", catalog);
+        } else if (assistant.ragInjectEnabled()) {
+            String noTools = ragContext.isPresent()
+                    ? "Nenhuma. Os trechos da base de conhecimento acima já foram recuperados; "
+                            + "responda com eles. Não mencione search_knowledge_base nem outras ferramentas."
+                    : "Nenhuma. Se a base de conhecimento acima estiver vazia, diga que não encontrou na base. "
+                            + "Não mencione search_knowledge_base.";
+            appendBlock(sb, "Ferramentas", noTools);
         }
 
         return sb.toString();

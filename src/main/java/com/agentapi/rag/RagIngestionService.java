@@ -31,8 +31,18 @@ public class RagIngestionService {
     @Transactional
     public UUID ingest(String titulo, String fonte, String conteudo) {
         UUID documentoId = UUID.randomUUID();
-        documentoRepository.save(new DocumentoEntity(documentoId, titulo, fonte));
+        documentoRepository.save(new DocumentoEntity(documentoId, titulo, fonte, conteudo));
+        indexChunks(documentoId, conteudo);
+        return documentoId;
+    }
 
+    @Transactional
+    public void reindexDocument(UUID documentoId, String conteudo) {
+        chunkRepository.deleteByIdDocumento(documentoId);
+        indexChunks(documentoId, conteudo);
+    }
+
+    void indexChunks(UUID documentoId, String conteudo) {
         List<String> chunks = TextChunker.split(
                 conteudo,
                 ragProperties.getChunkMaxChars(),
@@ -46,6 +56,5 @@ public class RagIngestionService {
                     ordem++,
                     chunk));
         }
-        return documentoId;
     }
 }

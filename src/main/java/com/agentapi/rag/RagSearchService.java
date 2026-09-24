@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
 import com.agentapi.config.RagProperties;
@@ -45,12 +46,63 @@ public class RagSearchService {
         int limit = Math.max(1, topK);
 
         if (isPostgres()) {
-            return searchPostgres(term, limit);
+            List<RagHit> hits = searchPostgresWeb(term, limit);
+            if (!hits.isEmpty()) {
+                return hits;
+            }
+            hits = searchPostgresPlain(term, limit);
+            if (!hits.isEmpty()) {
+                return hits;
+            }
+            for (String alt : RagQueryVariants.fallbacks(term)) {
+                hits = searchPostgresPlain(alt, limit);
+                if (!hits.isEmpty()) {
+                    return hits;
+                }
+                hits = searchPostgresIlike(alt, limit);
+                if (!hits.isEmpty()) {
+                    return hits;
+                }
+            }
+            hits = searchPostgresIlike(term, limit);
+            if (!hits.isEmpty()) {
+                return hits;
+            }
+            return List.of();
         }
         return searchLike(term, limit);
     }
 
-    private List<RagHit> searchPostgres(String term, int limit) {
+    private List<RagHit> searchPostgresIlike(String term, int limit) {
+        String pattern = "%" + term.replace("%", "").replace("_", "") + "%";
+        if (pattern.length() < 4) {
+            return List.of();
+        }
+        String sql = """
+                SELECT d.nm_titulo, d.nm_fonte, c.ds_conteudo, 1.0 AS score
+                FROM agent.documento_chunk c
+                INNER JOIN agent.documento d ON d.id_documento = c.id_documento
+                WHERE c.ds_conteudo ILIKE ?
+                ORDER BY c.nu_ordem ASC
+                LIMIT ?
+                """;
+        return queryPostgres(sql, pattern, limit);
+    }
+
+    private List<RagHit> searchPostgresWeb(String term, int limit) {
+        String sql = """
+                SELECT d.nm_titulo, d.nm_fonte, c.ds_conteudo,
+                       ts_rank(c.ds_busca, websearch_to_tsquery('portuguese', ?)) AS score
+                FROM agent.documento_chunk c
+                INNER JOIN agent.documento d ON d.id_documento = c.id_documento
+                WHERE c.ds_busca @@ websearch_to_tsquery('portuguese', ?)
+                ORDER BY score DESC
+                LIMIT ?
+                """;
+        return queryPostgresFts(sql, term, limit);
+    }
+
+    private List<RagHit> searchPostgresPlain(String term, int limit) {
         String sql = """
                 SELECT d.nm_titulo, d.nm_fonte, c.ds_conteudo,
                        ts_rank(c.ds_busca, plainto_tsquery('portuguese', ?)) AS score
@@ -60,16 +112,28 @@ public class RagSearchService {
                 ORDER BY score DESC
                 LIMIT ?
                 """;
+        return queryPostgresFts(sql, term, limit);
+    }
+
+    private List<RagHit> queryPostgresFts(String sql, String term, int limit) {
         return jdbcTemplate.query(
                 sql,
-                (rs, rowNum) -> new RagHit(
-                        rs.getString("nm_titulo"),
-                        rs.getString("nm_fonte"),
-                        rs.getString("ds_conteudo"),
-                        rs.getDouble("score")),
+                rowMapper(),
                 term,
                 term,
                 limit);
+    }
+
+    private List<RagHit> queryPostgres(String sql, Object... args) {
+        return jdbcTemplate.query(sql, rowMapper(), args);
+    }
+
+    private static RowMapper<RagHit> rowMapper() {
+        return (rs, rowNum) -> new RagHit(
+                rs.getString("nm_titulo"),
+                rs.getString("nm_fonte"),
+                rs.getString("ds_conteudo"),
+                rs.getDouble("score"));
     }
 
     private List<RagHit> searchLike(String term, int limit) {

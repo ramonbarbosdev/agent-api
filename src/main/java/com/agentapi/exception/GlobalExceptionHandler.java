@@ -25,6 +25,12 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.from(ex.getCode(), ex.getMessage()));
     }
 
+    @ExceptionHandler(RagDocumentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleRagDocumentNotFound(RagDocumentNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.from(ex.getCode(), ex.getMessage()));
+    }
+
     @ExceptionHandler(LlmException.class)
     public ResponseEntity<ErrorResponse> handleLlm(LlmException ex) {
         HttpStatus status = mapLlmStatus(ex.getCode());

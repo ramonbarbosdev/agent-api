@@ -12,8 +12,10 @@ public final class RagContextFormatter {
             return "";
         }
         StringBuilder sb = new StringBuilder();
-        sb.append("Use apenas os trechos abaixo para fatos sobre politicas e documentos. ");
-        sb.append("Cite a fonte ao responder (ex.: \"fonte: ...\").\n");
+        sb.append("Estes trechos JA foram buscados na base indexada; nao e necessario chamar ferramenta de busca. ");
+        sb.append("Responda usando SOMENTE o texto abaixo para fatos, prazos e codigos. ");
+        sb.append("Reproduza numeros literalmente (ex.: 17 dias uteis, nao outro valor). ");
+        sb.append("Se nenhum trecho abaixo responder a pergunta, diga que nao encontrou na base.\n");
         int index = 1;
         for (RagHit hit : hits) {
             sb.append("\n[").append(index++).append("] ");
