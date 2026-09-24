@@ -50,7 +50,13 @@ public class DatabaseRagContextProvider implements RagContextProvider {
             return Optional.empty();
         }
         int topK = assistant.get().ragTopK() > 0 ? assistant.get().ragTopK() : ragProperties.getTopK();
-        List<RagHit> hits = ragSearchService.search(userMessage, topK);
+        List<RagHit> hits;
+        try {
+            hits = ragSearchService.search(userMessage, topK);
+        } catch (Exception ex) {
+            log.warn("RAG search failed (assistant={}): {}", context.getAssistantCode(), ex.getMessage());
+            return Optional.empty();
+        }
         if (hits.isEmpty()) {
             log.info("RAG inject skipped (assistant={}, no hits for user message)", context.getAssistantCode());
             return Optional.empty();

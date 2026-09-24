@@ -1,5 +1,6 @@
 package com.agentapi.rag;
 
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +23,7 @@ public class RagSearchService {
     private final JdbcTemplate jdbcTemplate;
     private final DocumentoChunkRepository chunkRepository;
     private final DocumentoRepository documentoRepository;
+    private final boolean postgres;
 
     public RagSearchService(
             RagProperties ragProperties,
@@ -32,6 +34,7 @@ public class RagSearchService {
         this.jdbcTemplate = jdbcTemplate;
         this.chunkRepository = chunkRepository;
         this.documentoRepository = documentoRepository;
+        this.postgres = detectPostgres(jdbcTemplate);
     }
 
     public List<RagHit> search(String query) {
@@ -45,7 +48,7 @@ public class RagSearchService {
         String term = normalizeQuery(query);
         int limit = Math.max(1, topK);
 
-        if (isPostgres()) {
+        if (postgres) {
             List<RagHit> hits = searchPostgresWeb(term, limit);
             if (!hits.isEmpty()) {
                 return hits;
@@ -151,9 +154,9 @@ public class RagSearchService {
         return hits;
     }
 
-    private boolean isPostgres() {
-        try {
-            String product = jdbcTemplate.getDataSource().getConnection().getMetaData().getDatabaseProductName();
+    private static boolean detectPostgres(JdbcTemplate jdbcTemplate) {
+        try (Connection connection = jdbcTemplate.getDataSource().getConnection()) {
+            String product = connection.getMetaData().getDatabaseProductName();
             return product != null && product.toLowerCase().contains("postgresql");
         } catch (Exception ex) {
             return false;
