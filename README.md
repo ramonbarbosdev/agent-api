@@ -1,28 +1,58 @@
 # Agent API
 
-API núcleo de uma plataforma de assistentes LLM. Este MVP expõe chat HTTP com o assistente **HORAS_EXTRAS**, orquestrado pelo **Agent Engine** e integrado ao **Ollama** como provedor local de LLM.
+Plataforma de agentes com **multi-usuário (JWT)**, conexão **Cursor por usuário** e chat em `/api/agent/chat` e `/ws/agent/chat`. Runtime via sidecar Node (`cursor-sidecar/`) e `@cursor/sdk`.
+
+Ver **[docs/gateway-architecture.md](docs/gateway-architecture.md)**.
+
+### Fluxo rápido (Cursor)
+
+```bash
+# 1. Registrar
+curl -s -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"voce@exemplo.com","password":"senha-segura-8"}'
+
+# 2. Conectar Cursor (use o accessToken do passo 1)
+curl -s -X POST http://localhost:8080/api/connections/cursor \
+  -H "Authorization: Bearer SEU_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"apiKey":"sua-cursor-api-key","label":"Minha Cursor"}'
+
+# 3. Criar agente (workspace = AGENT_GATEWAY_DEFAULT_PROJECT_PATH no servidor)
+curl -s -X POST http://localhost:8080/api/agent/assistants \
+  -H "Authorization: Bearer SEU_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"code":"MEU_AGENTE","name":"Meu agente","systemPrompt":"...","connectionId":"UUID_DA_CONEXAO","prependBasePrompt":false}'
+
+# 4. Chat
+curl -s -X POST http://localhost:8080/api/agent/chat \
+  -H "Authorization: Bearer SEU_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"assistant":"MEU_AGENTE","message":"Olá"}'
+```
 
 ## Stack
 
 - Java 21
 - Spring Boot 3.4
 - Maven
-- Spring Web + Bean Validation
-- Ollama (HTTP)
-
-Sem banco de dados, autenticação ou WhatsApp neste MVP.
+- Spring Web + Bean Validation + Security (JWT)
+- PostgreSQL + Flyway
+- Cursor sidecar (`@cursor/sdk`)
 
 ## Estrutura
 
 ```text
 src/main/java/com/agentapi/
-├── agent/           # Controller, Service, Engine, Context, Policy
-├── assistant/       # Tipos e registro de assistentes + prompts
-├── llm/             # LlmClient e OllamaClient
+├── agent/           # Controller, Service, CursorAgentRuntime
+├── auth/            # JWT, registro/login
+├── connection/      # Conexões Cursor por usuário
+├── gateway/         # Sidecar, sessões, projetos allowlist
+├── assistant/       # CRUD de agentes + prompts
 ├── conversation/    # ConversationService + JPA (schema agent)
-├── model/           # AuditableEntity (padrão eSimples)
-├── tool/            # Esqueleto para tool calling futuro
-├── config/          # Propriedades e beans Ollama
+├── rag/             # Documentos e busca (API)
+├── tool/            # Tools manuais (/api/agent/tools)
+├── config/          # Propriedades
 ├── web/             # DTOs da API
 └── exception/       # Erros padronizados
 ```
@@ -43,13 +73,11 @@ Banco: PostgreSQL + Flyway, schema **`agent`** (`conversa`, `mensagem_conversa`)
 
 ```properties
 server.port=${SERVER_PORT:8080}
-
-llm.provider=ollama
-
-ollama.base-url=${OLLAMA_BASE_URL:http://localhost:11434}
-ollama.model=${OLLAMA_MODEL:qwen3:8b}
-ollama.timeout=${OLLAMA_TIMEOUT:60s}
+agent.auth.enabled=${AGENT_AUTH_ENABLED:true}
+agent.gateway.sidecar-url=${CURSOR_SIDECAR_URL:http://127.0.0.1:8791}
 ```
+
+Ver `.env.exemple` para JWT, secrets, allowlist e catálogo de projetos.
 
 CORS e WebSocket: origens do front em `config/AgentCorsOrigins.java` (edite a lista no código).
 
@@ -61,13 +89,9 @@ cp .env.exemple .env
 
 ## Pré-requisitos
 
-1. **PostgreSQL** — instale localmente ou use `docker compose up -d` na raiz (banco `agent_api`, usuário/senha `agent`). No `.env`: `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD` (veja `.env.exemple`). Sem Postgres a API não sobe; os testes Maven usam H2 em memória (`profile test`).
-2. [Ollama](https://ollama.com/) em execução (porta `11434`).
-3. Modelo baixado, por exemplo:
-
-```bash
-ollama pull qwen3:8b
-```
+1. **PostgreSQL** — instale localmente ou use `docker compose up -d` na raiz. No `.env`: `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD` (veja `.env.exemple`). Os testes Maven usam H2 em memória (`profile test`).
+2. **cursor-sidecar** — `cd cursor-sidecar && npm install && npm start` (token igual ao `CURSOR_SIDECAR_TOKEN` no `.env`).
+3. Usuário com **API key Cursor** cadastrada em `/api/connections/cursor` e pelo menos um agente criado.
 
 ## Executar
 
@@ -83,7 +107,7 @@ Health check (leve, load balancer):
 curl -s http://localhost:8080/api/agent/health
 ```
 
-Diagnóstico completo (API + Ollama + modelo + assistente):
+Diagnóstico (API + sidecar + conexão Cursor + assistente):
 
 ```bash
 curl -s "http://localhost:8080/api/agent/status?assistant=HORAS_EXTRAS"
@@ -176,7 +200,7 @@ curl -s -X POST http://localhost:8080/api/agent/tools/invoke \
   -d '{"assistant":"HORAS_EXTRAS","tool":"consultar_politica_horas_extras","arguments":"{\"topico\":\"aprovacao\"}"}'
 ```
 
-Tools de escrita (`WRITE`) ficam bloqueadas até confirmação do usuário. No **chat**, o `AgentTurnContextFactory` monta system (prompt + memória/RAG quando existir + tools), histórico do PostgreSQL e truncagem (`AGENT_MAX_CONTEXT_CHARS`); o `AgentEngine` executa o loop tool calling (`AGENT_MAX_TOOL_STEPS`). Modelos pequenos podem não invocar tools — prefira modelos com suporte a function calling quando for crítico.
+Tools de escrita (`WRITE`) ficam bloqueadas até confirmação do usuário. O **chat** via Cursor usa o prompt do agente e persiste histórico no PostgreSQL; invocação automática de tools no loop do modelo não está no runtime Cursor (use `/api/agent/tools/invoke` para testes).
 
 ## Testar (cURL / Postman)
 
@@ -211,20 +235,12 @@ mvn test
 ## Fluxo
 
 ```text
-Frontend → AgentController → AgentService → AgentEngine → OllamaClient → Ollama → LLM
+Frontend → AgentController → AgentService → CursorAgentRuntime → Sidecar → @cursor/sdk
 ```
 
-## Treinar / melhorar o assistente
+## Roadmap
 
-Passo a passo (prompt, Modelfile, fine-tuning e RAG): **[docs/TUTORIAL-TREINAMENTO.md](docs/TUTORIAL-TREINAMENTO.md)**.
-
-## Roadmap da plataforma Agent
-
-Evolução em 8 fases (contrato → memória → tools → tool calling → contexto no engine → RAG → avaliação → fine-tuning): **[docs/ROADMAP-AGENT.md](docs/ROADMAP-AGENT.md)**.
-
-## Próximos passos (resumo)
-
-Ver checklist detalhado no roadmap. Em linha geral: compor prompts (`base-system` + domínio), persistir conversas, implementar tools e o loop de tool calling no `AgentEngine`, depois RAG e avaliação antes de fine-tuning.
+Histórico de evolução da plataforma: **[docs/ROADMAP-AGENT.md](docs/ROADMAP-AGENT.md)** (referência; runtime atual é Cursor).
 
 ## Segurança arquitetural
 

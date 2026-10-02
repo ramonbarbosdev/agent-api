@@ -35,6 +35,11 @@ public class AssistantRequest {
 
     private List<String> tools = new ArrayList<>();
 
+    @Size(max = 64)
+    private String projectId;
+
+    private String connectionId;
+
     public String getCode() {
         return code;
     }
@@ -113,5 +118,21 @@ public class AssistantRequest {
 
     public void setTools(List<String> tools) {
         this.tools = tools != null ? tools : new ArrayList<>();
+    }
+
+    public String getProjectId() {
+        return projectId;
+    }
+
+    public void setProjectId(String projectId) {
+        this.projectId = projectId;
+    }
+
+    public String getConnectionId() {
+        return connectionId;
+    }
+
+    public void setConnectionId(String connectionId) {
+        this.connectionId = connectionId;
     }
 }

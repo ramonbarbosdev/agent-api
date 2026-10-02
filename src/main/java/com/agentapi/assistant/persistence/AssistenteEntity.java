@@ -41,6 +41,15 @@ public class AssistenteEntity extends AuditableEntity {
     @Column(name = "nu_rag_top_k", nullable = false)
     private int nuRagTopK = 4;
 
+    @Column(name = "id_usuario")
+    private UUID idUsuario;
+
+    @Column(name = "id_connection")
+    private UUID idConnection;
+
+    @Column(name = "cd_projeto", length = 64)
+    private String cdProjeto;
+
     public AssistenteEntity() {
     }
 
@@ -114,5 +123,29 @@ public class AssistenteEntity extends AuditableEntity {
 
     public void setNuRagTopK(int nuRagTopK) {
         this.nuRagTopK = nuRagTopK;
+    }
+
+    public UUID getIdUsuario() {
+        return idUsuario;
+    }
+
+    public void setIdUsuario(UUID idUsuario) {
+        this.idUsuario = idUsuario;
+    }
+
+    public UUID getIdConnection() {
+        return idConnection;
+    }
+
+    public void setIdConnection(UUID idConnection) {
+        this.idConnection = idConnection;
+    }
+
+    public String getCdProjeto() {
+        return cdProjeto;
+    }
+
+    public void setCdProjeto(String cdProjeto) {
+        this.cdProjeto = cdProjeto;
     }
 }

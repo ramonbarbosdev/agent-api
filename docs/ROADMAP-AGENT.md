@@ -282,5 +282,4 @@ Ver **[TUTORIAL-TREINAMENTO.md](TUTORIAL-TREINAMENTO.md)** (níveis 3–4).
 ## Referências no repositório
 
 - Execução e endpoints: [README.md](../README.md)
-- Prompt e Ollama: [TUTORIAL-TREINAMENTO.md](TUTORIAL-TREINAMENTO.md)
-- Fluxo atual: `AgentController` → `AgentService` → `AgentEngine` → `OllamaClient`
+- Fluxo atual (2026): `AgentController` → `AgentService` → `CursorAgentRuntime` → sidecar Cursor

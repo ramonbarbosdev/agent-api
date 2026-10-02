@@ -12,9 +12,12 @@ import com.agentapi.assistant.persistence.AssistenteEntity;
 import com.agentapi.assistant.persistence.AssistenteRepository;
 import com.agentapi.assistant.persistence.AssistenteToolEntity;
 import com.agentapi.assistant.persistence.AssistenteToolRepository;
+import com.agentapi.auth.CurrentUser;
+import com.agentapi.connection.ConnectionService;
 import com.agentapi.exception.ApiException;
 import com.agentapi.exception.AssistantNotFoundException;
 import com.agentapi.exception.ErrorCode;
+import com.agentapi.gateway.project.PathAuthorizationService;
 import com.agentapi.tool.ToolRegistry;
 import com.agentapi.web.AssistantRequest;
 import com.agentapi.web.AssistantResponse;
@@ -30,6 +33,9 @@ public class AssistantConfigService {
     private final PromptLoader promptLoader;
     private final PromptComposer promptComposer;
     private final ToolRegistry toolRegistry;
+    private final CurrentUser currentUser;
+    private final PathAuthorizationService pathAuthorizationService;
+    private final ConnectionService connectionService;
 
     public AssistantConfigService(
             AssistenteRepository assistenteRepository,
@@ -37,43 +43,52 @@ public class AssistantConfigService {
             AssistantMapper assistantMapper,
             PromptLoader promptLoader,
             PromptComposer promptComposer,
-            ToolRegistry toolRegistry) {
+            ToolRegistry toolRegistry,
+            CurrentUser currentUser,
+            PathAuthorizationService pathAuthorizationService,
+            ConnectionService connectionService) {
         this.assistenteRepository = assistenteRepository;
         this.assistenteToolRepository = assistenteToolRepository;
         this.assistantMapper = assistantMapper;
         this.promptLoader = promptLoader;
         this.promptComposer = promptComposer;
         this.toolRegistry = toolRegistry;
+        this.currentUser = currentUser;
+        this.pathAuthorizationService = pathAuthorizationService;
+        this.connectionService = connectionService;
     }
 
     @Transactional(readOnly = true)
     public List<AssistantResponse> listResponses(boolean includeInactive) {
+        UUID userId = currentUser.requireUserId();
         List<AssistenteEntity> entities = includeInactive
-                ? assistenteRepository.findAllByOrderByNmNomeAsc()
-                : assistenteRepository.findByFlAtivoTrueOrderByNmNomeAsc();
+                ? assistenteRepository.findByIdUsuarioOrderByNmNomeAsc(userId)
+                : assistenteRepository.findByIdUsuarioAndFlAtivoTrueOrderByNmNomeAsc(userId);
         return entities.stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
     public AssistantResponse getByCode(String code) {
-        AssistenteEntity entity = requireEntity(code);
-        return toResponse(entity);
+        return toResponse(requireEntity(code));
     }
 
     @Transactional
     public AssistantResponse create(AssistantRequest request) {
+        UUID userId = currentUser.requireUserId();
         if (request.getCode() == null || request.getCode().isBlank()) {
             throw new ApiException(ErrorCode.INVALID_REQUEST, "Informe o código (code) do assistente.");
         }
         String code = AssistantCodes.normalize(request.getCode());
         validateCode(code);
-        if (assistenteRepository.existsByCdAssistenteIgnoreCase(code)) {
+        if (assistenteRepository.existsByCdAssistenteIgnoreCaseAndIdUsuario(code, userId)) {
             throw new ApiException(ErrorCode.INVALID_REQUEST, "Já existe assistente com código: " + code);
         }
         validateTools(request.getTools());
+        validateCursorFields(request, userId);
 
         AssistenteEntity entity = new AssistenteEntity();
         entity.setIdAssistente(UUID.randomUUID());
+        entity.setIdUsuario(userId);
         applyRequest(entity, request, code, true);
         assistenteRepository.save(entity);
         replaceTools(entity.getIdAssistente(), request.getTools());
@@ -84,25 +99,37 @@ public class AssistantConfigService {
     public AssistantResponse update(String code, AssistantRequest request) {
         AssistenteEntity entity = requireEntity(code);
         validateTools(request.getTools());
+        validateCursorFields(request, entity.getIdUsuario());
         applyRequest(entity, request, entity.getCdAssistente(), false);
         assistenteRepository.save(entity);
         replaceTools(entity.getIdAssistente(), request.getTools());
         return toResponse(entity);
     }
 
-    /**
-     * Remove o cadastro e vínculos de tools. Conversas antigas no banco permanecem
-     * (histórico), mas novos chats com este código deixam de funcionar.
-     */
     @Transactional
     public void delete(String code) {
         AssistenteEntity entity = requireEntity(code);
-        if (assistenteRepository.count() <= 1) {
-            throw new ApiException(
-                    ErrorCode.INVALID_REQUEST,
-                    "Não é possível excluir o único assistente cadastrado. Crie outro antes ou desative (ativo=false).");
-        }
         assistenteRepository.delete(entity);
+    }
+
+    private void validateCursorFields(AssistantRequest request, UUID userId) {
+        pathAuthorizationService.ensureWorkspaceConfigured();
+        if (request.getProjectId() != null && !request.getProjectId().isBlank()) {
+            pathAuthorizationService.resolveWorkspacePath(request.getProjectId().trim());
+        }
+        UUID connectionId = parseConnectionId(request.getConnectionId());
+        connectionService.requireActiveConnection(userId, connectionId);
+    }
+
+    private static UUID parseConnectionId(String connectionId) {
+        if (connectionId == null || connectionId.isBlank()) {
+            throw new ApiException(ErrorCode.CONNECTION_REQUIRED, "Informe connectionId do agente.");
+        }
+        try {
+            return UUID.fromString(connectionId);
+        } catch (IllegalArgumentException ex) {
+            throw new ApiException(ErrorCode.INVALID_REQUEST, "connectionId inválido.");
+        }
     }
 
     private void applyRequest(AssistenteEntity entity, AssistantRequest request, String code, boolean isCreate) {
@@ -116,6 +143,8 @@ public class AssistantConfigService {
         entity.setFlAtivo(request.isActive());
         entity.setFlRagInject(request.isRagInject());
         entity.setNuRagTopK(Math.max(1, request.getRagTopK()));
+        entity.setCdProjeto(trimToNull(request.getProjectId()));
+        entity.setIdConnection(parseConnectionId(request.getConnectionId()));
     }
 
     private String resolveSystemPrompt(AssistantRequest request) {
@@ -161,11 +190,14 @@ public class AssistantConfigService {
                 domain.active(),
                 domain.ragInjectEnabled(),
                 domain.ragTopK(),
-                tools);
+                tools,
+                entity.getCdProjeto(),
+                entity.getIdConnection() != null ? entity.getIdConnection().toString() : null);
     }
 
     private AssistenteEntity requireEntity(String code) {
-        return assistenteRepository.findByCdAssistenteIgnoreCase(AssistantCodes.normalize(code))
+        UUID userId = currentUser.requireUserId();
+        return assistenteRepository.findByCdAssistenteIgnoreCaseAndIdUsuario(AssistantCodes.normalize(code), userId)
                 .orElseThrow(() -> new AssistantNotFoundException(code));
     }
 

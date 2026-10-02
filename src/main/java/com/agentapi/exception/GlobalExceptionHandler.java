@@ -45,9 +45,28 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApi(ApiException ex) {
-        HttpStatus status = ex instanceof ToolException ? HttpStatus.UNPROCESSABLE_ENTITY : HttpStatus.BAD_REQUEST;
+        HttpStatus status = mapApiStatus(ex);
         return ResponseEntity.status(status)
                 .body(ErrorResponse.from(ex.getCode(), ex.getMessage()));
+    }
+
+    private static HttpStatus mapApiStatus(ApiException ex) {
+        if (ex instanceof ToolException) {
+            return HttpStatus.UNPROCESSABLE_ENTITY;
+        }
+        if (ex.getCode() == ErrorCode.UNAUTHORIZED) {
+            return HttpStatus.UNAUTHORIZED;
+        }
+        if (ex.getCode() == ErrorCode.CONNECTION_REQUIRED || ex.getCode() == ErrorCode.AGENT_NOT_ALLOWED) {
+            return HttpStatus.PRECONDITION_FAILED;
+        }
+        if (ex.getCode() == ErrorCode.PROJECT_NOT_FOUND
+                || ex.getCode() == ErrorCode.AGENT_NOT_FOUND
+                || ex.getCode() == ErrorCode.CONNECTION_NOT_FOUND
+                || ex.getCode() == ErrorCode.SESSION_NOT_FOUND) {
+            return HttpStatus.NOT_FOUND;
+        }
+        return HttpStatus.BAD_REQUEST;
     }
 
     @ExceptionHandler(Exception.class)

@@ -11,5 +11,7 @@ public record AssistantResponse(
         boolean active,
         boolean ragInject,
         int ragTopK,
-        List<String> tools) {
+        List<String> tools,
+        String projectId,
+        String connectionId) {
 }

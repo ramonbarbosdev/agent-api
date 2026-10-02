@@ -15,4 +15,14 @@ public interface AssistenteRepository extends JpaRepository<AssistenteEntity, UU
     List<AssistenteEntity> findAllByOrderByNmNomeAsc();
 
     boolean existsByCdAssistenteIgnoreCase(String cdAssistente);
+
+    Optional<AssistenteEntity> findByCdAssistenteIgnoreCaseAndIdUsuario(String cdAssistente, UUID idUsuario);
+
+    List<AssistenteEntity> findByIdUsuarioAndFlAtivoTrueOrderByNmNomeAsc(UUID idUsuario);
+
+    List<AssistenteEntity> findByIdUsuarioOrderByNmNomeAsc(UUID idUsuario);
+
+    boolean existsByCdAssistenteIgnoreCaseAndIdUsuario(String cdAssistente, UUID idUsuario);
+
+    long countByIdUsuario(UUID idUsuario);
 }

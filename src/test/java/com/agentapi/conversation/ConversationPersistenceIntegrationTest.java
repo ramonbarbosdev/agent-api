@@ -9,10 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-
 import com.agentapi.assistant.AssistantCodes;
-import com.agentapi.llm.LlmClient;
 import com.agentapi.web.AgentChatHistoryMessage;
 
 @SpringBootTest
@@ -21,9 +18,6 @@ class ConversationPersistenceIntegrationTest {
 
     @Autowired
     private ConversationService conversationService;
-
-    @MockitoBean
-    private LlmClient llmClient;
 
     @Test
     void persistsAndReloadsHistory() {

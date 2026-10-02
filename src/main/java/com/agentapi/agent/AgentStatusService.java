@@ -2,18 +2,19 @@ package com.agentapi.agent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
 import com.agentapi.assistant.Assistant;
 import com.agentapi.assistant.AssistantCodes;
 import com.agentapi.assistant.AssistantService;
-import com.agentapi.config.LlmProperties;
-import com.agentapi.config.OllamaProperties;
-import com.agentapi.llm.OllamaProbe;
+import com.agentapi.auth.CurrentUser;
+import com.agentapi.connection.persistence.AiConnectionRepository;
+import com.agentapi.gateway.sidecar.CursorSidecarClient;
 import com.agentapi.web.AgentPlatformStatusResponse;
 import com.agentapi.web.AssistantStatusDto;
+import com.agentapi.web.CursorStatusDto;
 import com.agentapi.web.LlmStatusDto;
 import com.agentapi.web.StatusCheck;
 
@@ -21,70 +22,56 @@ import com.agentapi.web.StatusCheck;
 public class AgentStatusService {
 
     private final AssistantService assistantService;
-    private final LlmProperties llmProperties;
-    private final OllamaProperties ollamaProperties;
-    private final OllamaProbe ollamaProbe;
+    private final CurrentUser currentUser;
+    private final AiConnectionRepository connectionRepository;
+    private final CursorSidecarClient sidecarClient;
 
     public AgentStatusService(
             AssistantService assistantService,
-            LlmProperties llmProperties,
-            OllamaProperties ollamaProperties,
-            OllamaProbe ollamaProbe) {
+            CurrentUser currentUser,
+            AiConnectionRepository connectionRepository,
+            CursorSidecarClient sidecarClient) {
         this.assistantService = assistantService;
-        this.llmProperties = llmProperties;
-        this.ollamaProperties = ollamaProperties;
-        this.ollamaProbe = ollamaProbe;
+        this.currentUser = currentUser;
+        this.connectionRepository = connectionRepository;
+        this.sidecarClient = sidecarClient;
     }
 
     public AgentPlatformStatusResponse getStatus(String assistantParam) {
         List<StatusCheck> checks = new ArrayList<>();
+        checks.add(new StatusCheck("api", "OK", "Agent API em execução.", null));
+
+        boolean sidecarOk = sidecarClient.isHealthy();
         checks.add(new StatusCheck(
-                "api",
-                "OK",
-                "Agent API em execução.",
-                null));
+                "sidecar",
+                sidecarOk ? "OK" : "ERROR",
+                sidecarOk ? "Sidecar Cursor acessível." : "Sidecar Cursor indisponível.",
+                sidecarOk ? null : "Inicie cursor-sidecar no VPS."));
 
-        Optional<List<String>> modelNames = ollamaProbe.fetchModelNames();
-        boolean llmReachable = modelNames.isPresent();
-        String configuredModel = ollamaProperties.getModel();
-        boolean modelReady = llmReachable
-                && OllamaProbe.isModelAvailable(configuredModel, modelNames.orElse(List.of()));
-
-        if (!llmReachable) {
+        boolean connected = false;
+        boolean testOk = false;
+        UUID userId = currentUser.userIdOrNull();
+        if (userId != null) {
+            var conn = connectionRepository.findFirstByIdUsuarioAndActiveTrueOrderByAtualizadoEmDesc(userId);
+            connected = conn.isPresent();
+            testOk = connected && conn.get().getLastValidatedAt() != null;
+        }
+        if (!connected) {
             checks.add(new StatusCheck(
-                    "llm-reachable",
-                    "ERROR",
-                    "Não foi possível conectar ao Ollama em " + ollamaProperties.getBaseUrl() + ".",
-                    "Inicie o Ollama (app ou `ollama serve`) e confira OLLAMA_BASE_URL no .env da API."));
+                    "cursor-connection",
+                    "WARN",
+                    "Nenhuma conexão Cursor ativa.",
+                    "Conecte sua API key em /api/connections/cursor."));
         } else {
             checks.add(new StatusCheck(
-                    "llm-reachable",
-                    "OK",
-                    "Ollama acessível em " + ollamaProperties.getBaseUrl() + ".",
-                    null));
+                    "cursor-connection",
+                    testOk ? "OK" : "WARN",
+                    testOk ? "Conexão Cursor validada." : "Conexão Cursor não testada.",
+                    testOk ? null : "Execute POST /api/connections/{id}/test."));
         }
 
-        if (llmReachable && !modelReady) {
-            checks.add(new StatusCheck(
-                    "llm-model",
-                    "ERROR",
-                    "Modelo \"" + configuredModel + "\" não encontrado no Ollama.",
-                    "Execute: ollama pull " + configuredModel));
-        } else if (llmReachable) {
-            checks.add(new StatusCheck(
-                    "llm-model",
-                    "OK",
-                    "Modelo \"" + configuredModel + "\" disponível no Ollama.",
-                    null));
-        }
-
-        if (!"ollama".equalsIgnoreCase(llmProperties.getProvider())) {
-            checks.add(new StatusCheck(
-                    "llm-provider",
-                    "WARN",
-                    "Provedor LLM configurado: " + llmProperties.getProvider() + ".",
-                    "Este MVP valida apenas integração com Ollama (llm.provider=ollama)."));
-        }
+        LlmStatusDto llm = new LlmStatusDto("cursor", "", "", sidecarOk, connected);
+        CursorStatusDto cursor = new CursorStatusDto(connected, testOk, sidecarOk);
 
         String activeAssistantId = resolveActiveAssistantId(assistantParam, checks);
         List<AssistantStatusDto> assistants = buildAssistantList();
@@ -95,37 +82,26 @@ public class AgentStatusService {
                 checks.add(new StatusCheck(
                         "assistant",
                         "ERROR",
-                        "Assistente \"" + assistantParam + "\" não está disponível na API.",
-                        "Use um dos IDs retornados em assistants (ex.: HORAS_EXTRAS)."));
-            } else {
-                checks.add(new StatusCheck(
-                        "assistant",
-                        "OK",
-                        "Assistente ativo: " + activeAssistantId + ".",
-                        null));
+                        "Assistente \"" + assistantParam + "\" não está disponível.",
+                        "Crie um agente em /api/agent/assistants."));
             }
         }
 
         boolean ready = checks.stream().noneMatch(check -> "ERROR".equals(check.level()));
-        LlmStatusDto llm = new LlmStatusDto(
-                llmProperties.getProvider(),
-                ollamaProperties.getBaseUrl(),
-                configuredModel,
-                llmReachable,
-                modelReady);
-
-        return new AgentPlatformStatusResponse("UP", ready, llm, activeAssistantId, assistants, checks);
+        return new AgentPlatformStatusResponse("UP", ready, llm, cursor, activeAssistantId, assistants, checks);
     }
 
     private List<AssistantStatusDto> buildAssistantList() {
         List<AssistantStatusDto> result = new ArrayList<>();
-        for (Assistant assistant : assistantService.listActive()) {
-            String model = assistant.resolveModel(ollamaProperties.getModel());
+        List<Assistant> list = currentUser.userIdOrNull() != null
+                ? assistantService.listActiveForCurrentUser()
+                : List.of();
+        for (Assistant assistant : list) {
             result.add(new AssistantStatusDto(
                     assistant.code(),
                     assistant.name(),
                     assistant.description(),
-                    model,
+                    "cursor",
                     true));
         }
         return result;
@@ -136,8 +112,13 @@ public class AgentStatusService {
             return null;
         }
         String normalized = AssistantCodes.normalize(assistantParam);
-        if (assistantService.findActiveByCode(normalized).isPresent()) {
-            return normalized;
+        if (currentUser.userIdOrNull() != null) {
+            try {
+                assistantService.requireActiveByCodeForUser(normalized, currentUser.requireUserId());
+                return normalized;
+            } catch (Exception ex) {
+                return normalized;
+            }
         }
         return normalized;
     }

@@ -1,33 +1,36 @@
 package com.agentapi.agent;
 
-import org.springframework.stereotype.Service;
-
+import java.util.List;
 import java.util.UUID;
+
+import org.springframework.stereotype.Service;
 
 import com.agentapi.assistant.AssistantCodes;
 import com.agentapi.assistant.AssistantService;
+import com.agentapi.auth.CurrentUser;
 import com.agentapi.conversation.ConversationService;
 import com.agentapi.exception.AssistantNotFoundException;
 import com.agentapi.web.AgentChatRequest;
 import com.agentapi.web.AgentChatResponse;
 import com.agentapi.web.AgentChatStreamRequest;
 
-import java.util.List;
-
 @Service
 public class AgentService {
 
-    private final AgentEngine agentEngine;
+    private final CursorAgentRuntime cursorAgentRuntime;
     private final ConversationService conversationService;
     private final AssistantService assistantService;
+    private final CurrentUser currentUser;
 
     public AgentService(
-            AgentEngine agentEngine,
+            CursorAgentRuntime cursorAgentRuntime,
             ConversationService conversationService,
-            AssistantService assistantService) {
-        this.agentEngine = agentEngine;
+            AssistantService assistantService,
+            CurrentUser currentUser) {
+        this.cursorAgentRuntime = cursorAgentRuntime;
         this.conversationService = conversationService;
         this.assistantService = assistantService;
+        this.currentUser = currentUser;
     }
 
     public AgentChatResponse chat(AgentChatRequest request) {
@@ -35,21 +38,20 @@ public class AgentService {
         if (assistantCode.isBlank()) {
             throw new AssistantNotFoundException(request.getAssistant());
         }
-        assistantService.requireActiveByCode(assistantCode);
+        UUID userId = currentUser.requireUserId();
+        assistantService.requireActiveByCodeForUser(assistantCode, userId);
 
         UUID conversationId = conversationService.resolveConversationId(request.getConversationId());
-
         AgentContext context = AgentContext.builder()
+                .userId(userId)
                 .assistantCode(assistantCode)
                 .conversationId(conversationId)
                 .build();
 
-        conversationService.ensureConversation(conversationId, assistantCode, context.getUserId());
+        conversationService.ensureConversation(conversationId, assistantCode, userId);
 
-        String reply = agentEngine.run(context, request.getMessage(), request.getHistory());
-
+        String reply = cursorAgentRuntime.run(context, request.getMessage(), request.getHistory());
         conversationService.appendTurn(conversationId, request.getMessage(), reply);
-
         return new AgentChatResponse(reply, conversationId.toString());
     }
 
@@ -58,21 +60,20 @@ public class AgentService {
         if (assistantCode.isBlank()) {
             throw new AssistantNotFoundException(request.getAssistant());
         }
-        assistantService.requireActiveByCode(assistantCode);
+        UUID userId = currentUser.requireUserId();
+        assistantService.requireActiveByCodeForUser(assistantCode, userId);
 
         UUID conversationId = conversationService.resolveConversationId(request.getConversationId());
-
         AgentContext context = AgentContext.builder()
+                .userId(userId)
                 .assistantCode(assistantCode)
                 .conversationId(conversationId)
                 .build();
 
-        conversationService.ensureConversation(conversationId, assistantCode, context.getUserId());
+        conversationService.ensureConversation(conversationId, assistantCode, userId);
 
-        String reply = agentEngine.runStream(context, request.getMessage(), List.of(), emitter);
-
+        String reply = cursorAgentRuntime.runStream(context, request.getMessage(), List.of(), emitter);
         conversationService.appendTurn(conversationId, request.getMessage(), reply);
-
         return new AgentChatResponse(reply, conversationId.toString());
     }
 }

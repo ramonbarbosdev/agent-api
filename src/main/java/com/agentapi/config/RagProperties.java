@@ -9,11 +9,6 @@ public class RagProperties {
 
     private int topK = 4;
 
-    /**
-     * Incluir trechos automaticamente no system prompt a cada turno.
-     */
-    private boolean injectIntoSystemPrompt = true;
-
     private int chunkMaxChars = 900;
 
     private int chunkOverlapChars = 120;
@@ -32,14 +27,6 @@ public class RagProperties {
 
     public void setTopK(int topK) {
         this.topK = topK;
-    }
-
-    public boolean isInjectIntoSystemPrompt() {
-        return injectIntoSystemPrompt;
-    }
-
-    public void setInjectIntoSystemPrompt(boolean injectIntoSystemPrompt) {
-        this.injectIntoSystemPrompt = injectIntoSystemPrompt;
     }
 
     public int getChunkMaxChars() {
